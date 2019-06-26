@@ -15,16 +15,23 @@ import com.namnoit.voicerecorder.R;
  * A placeholder fragment containing a simple view.
  */
 public class RecordFragment extends Fragment {
-    private FloatingActionButton recordButton, pauseButton;
+    private FloatingActionButton recordStopButton, pauseButton;
+
     @Override
     public View onCreateView(
             @NonNull LayoutInflater inflater, ViewGroup container,
             Bundle savedInstanceState) {
         View root = inflater.inflate(R.layout.fragment_record, container, false);
 
-        recordButton = root.findViewById(R.id.button_record);
+        recordStopButton = root.findViewById(R.id.button_record_stop);
         pauseButton = root.findViewById(R.id.button_pause);
-        recordButton.setOnClickListener(new View.OnClickListener() {
+
+        recordStopButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+            }
+        });
+        pauseButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
 
