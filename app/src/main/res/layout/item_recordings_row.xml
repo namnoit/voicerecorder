@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <ImageView
+        android:id="@+id/image_record"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_margin="10dp"
+        app:srcCompat="@drawable/ic_record" />
+
+    <TextView
+        android:id="@+id/item_recording_name"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="10dp"
+        android:textSize="20sp"
+        android:lines="1"
+        android:layout_alignTop="@id/image_record"
+        android:layout_toEndOf="@id/image_record"/>
+
+    <TextView
+        android:id="@+id/item_recording_duration"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignStart="@id/item_recording_name"
+        android:layout_alignBottom="@id/image_record"
+        android:layout_below="@id/item_recording_name"/>
+
+    <TextView
+        android:id="@+id/item_recording_date"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignBottom="@id/item_recording_duration"
+        android:layout_alignParentEnd="true"
+        android:layout_marginEnd="10dp"/>
+</RelativeLayout>

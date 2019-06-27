@@ -8,6 +8,7 @@ import android.view.ViewGroup;
 
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.namnoit.voicerecorder.R;
@@ -40,6 +41,8 @@ public class RecordFragment extends Fragment {
             public void onClick(View v) {
                 Intent intent = new Intent(getContext(), RecorderService.class);
                 getContext().stopService(intent);
+                Intent broadcast = new Intent();
+                LocalBroadcastManager.getInstance(getContext()).sendBroadcast(broadcast);
             }
         });
 

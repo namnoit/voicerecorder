@@ -10,4 +10,20 @@ public class Recording {
         this.name = name;
         this.date = date;
     }
+
+    public int getID() {
+        return ID;
+    }
+
+    public int getDuration() {
+        return duration;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public String getDate() {
+        return date;
+    }
 }

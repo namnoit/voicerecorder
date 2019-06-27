@@ -17,6 +17,6 @@
 
     <string name="tab_record">Record</string>
     <string name="tab_recordings">Recordings</string>
-    <string name="notification_title_recording">Recording...</string>
+    <string name="notification_title_recording">Recording…</string>
 
 </resources>

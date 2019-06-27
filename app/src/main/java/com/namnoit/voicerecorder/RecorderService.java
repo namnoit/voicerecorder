@@ -5,6 +5,7 @@ import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
+import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -16,15 +17,23 @@ import android.util.Log;
 
 import androidx.core.app.NotificationCompat;
 
+import com.namnoit.voicerecorder.data.RecordingsDbHelper;
+
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
 public class RecorderService extends Service {
     private MediaRecorder recorder;
-    private String outputFile = null;
+    private String tempFile = null;
     private static final String CHANNEL_ID = "Voice_Recorder";
-
+    private String date;
+    private String dir;
     public RecorderService() {
     }
 
@@ -63,43 +72,48 @@ public class RecorderService extends Service {
                         .build();
 
         // Get file name
+        dir = getApplicationContext().getFilesDir().getPath();
         SimpleDateFormat s = new SimpleDateFormat("ddMMyyyy_hhmmss");
-        String date = s.format(new Date());
-        outputFile = Environment.getExternalStorageDirectory().
-                getAbsolutePath() +  "/" + date;
-
+        date = s.format(new Date());
+        tempFile = "Recording_" + date;
+//        String prefix = Environment.getExternalStorageDirectory().
+//                getAbsolutePath() +  "/" + date;
+//        String file_path = getApplicationContext().getFilesDir().getPath();
         // Configure Media Recorder
         recorder = new MediaRecorder();
         recorder.setAudioChannels(2);
         recorder.setAudioSource(MediaRecorder.AudioSource.DEFAULT);
         SharedPreferences pref = getSharedPreferences(MainActivity.PREF_NAME, Context.MODE_PRIVATE);
         int audioFormat = pref.getInt(MainActivity.KEY_QUALITY,MainActivity.QUALITY_GOOD);
+
         switch (audioFormat){
             case MainActivity.QUALITY_GOOD:
                 recorder.setOutputFormat(MediaRecorder.OutputFormat.AAC_ADTS);
-                recorder.setAudioEncoder(MediaRecorder.AudioEncoder.HE_AAC);
+                recorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
                 recorder.setAudioSamplingRate(48000);
                 recorder.setAudioEncodingBitRate(320000);
-                recorder.setOutputFile(outputFile + ".m4a");
+                tempFile += ".aac";
                 break;
             case MainActivity.QUALITY_SMALL:
-                recorder.setOutputFormat(MediaRecorder.OutputFormat.AMR_NB);
+                recorder.setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP);
                 recorder.setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB);
                 recorder.setAudioSamplingRate(16000);
                 recorder.setAudioEncodingBitRate(128000);
-                recorder.setOutputFile(outputFile + ".3gp");
+                tempFile += ".3gp";
                 break;
             default:
                 recorder.setOutputFormat(MediaRecorder.OutputFormat.DEFAULT);
                 recorder.setAudioEncoder(MediaRecorder.AudioEncoder.DEFAULT);
                 recorder.setAudioSamplingRate(16000);
                 recorder.setAudioEncodingBitRate(128000);
-                recorder.setOutputFile(outputFile + ".aac");
+                tempFile += ".aac";
                 break;
         }
-
+        recorder.setOutputFile(dir + "/" + tempFile);
         try {
             startForeground(1, notification);
+
+
             recorder.prepare();
             recorder.start();
 
@@ -120,6 +134,38 @@ public class RecorderService extends Service {
         recorder.reset();
         recorder.release();
         recorder = null;
+        FileInputStream fis = null;
+        try {
+            fis = new FileInputStream(dir + "/" + tempFile);
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+
+            byte[] buffer =new byte[1024];
+            int read;
+            while ((read = fis.read(buffer)) != -1) {
+                baos.write(buffer, 0, read);
+                baos.flush();
+            }
+            byte[] fileByteArray = baos.toByteArray();
+
+            RecordingsDbHelper dbHelper = new RecordingsDbHelper(getApplicationContext());
+            dbHelper.insert(tempFile,fileByteArray,1000,date);
+
+            // Delete temporary file
+            File delFile = new File(dir + "/" + tempFile);
+            delFile.delete();
+            if(delFile.exists()){
+                delFile.getCanonicalFile().delete();
+                if(delFile.exists()){
+                    getApplicationContext().deleteFile(delFile.getName());
+                }
+            }
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+
         super.onDestroy();
     }
 }
