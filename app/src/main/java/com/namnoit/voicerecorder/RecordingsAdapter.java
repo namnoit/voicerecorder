@@ -1,9 +1,7 @@
 package com.namnoit.voicerecorder;
 
 import android.content.Context;
-import android.icu.text.LocaleDisplayNames;
 import android.media.MediaPlayer;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -24,9 +22,7 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
     private ArrayList<Recording> recordingsList;
     private Context context;
     private MediaPlayer mediaPlayer = new MediaPlayer();
-    private void playMp3(byte[] mp3SoundByteArray) {
 
-    }
     public RecordingsAdapter(ArrayList<Recording> recordings, Context c){
         recordingsList = recordings;
         context = c;
@@ -43,7 +39,12 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
     @Override
     public void onBindViewHolder(@NonNull final ViewHolder holder, final int position) {
         holder.textName.setText(recordingsList.get(position).getName());
-        holder.textDuration.setText(Integer.toString(recordingsList.get(position).getID()));
+        int seconds = recordingsList.get(position).getDuration()/1000;
+        long s = seconds % 60;
+        long m = (seconds / 60) % 60;
+        long h = (seconds / (60 * 60)) % 24;
+        String dur = String.format("%02d:%02d:%02d",h,m,s);
+        holder.textDuration.setText(dur);
         holder.textDate.setText(recordingsList.get(position).getDate());
         holder.id = recordingsList.get(position).getID();
         holder.itemView.setOnClickListener(new View.OnClickListener() {
@@ -74,7 +75,6 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
                     mediaPlayer.prepare();
                     mediaPlayer.start();
                 } catch (IOException ex) {
-                    String s = ex.toString();
                     ex.printStackTrace();
                 }
             }

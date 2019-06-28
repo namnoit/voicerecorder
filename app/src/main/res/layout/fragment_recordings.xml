@@ -7,6 +7,14 @@
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/list_recordings"
+        android:layout_above="@id/playback"
         android:layout_width="match_parent"
         android:layout_height="match_parent" />
+
+    <include
+        layout="@layout/layout_play_recording"
+        android:id="@+id/playback"
+        android:layout_alignParentBottom="true"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" />
 </RelativeLayout>

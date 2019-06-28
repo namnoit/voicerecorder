@@ -32,6 +32,8 @@ public class RecordFragment extends Fragment {
         recordStopButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+
+                recordStopButton.setImageResource(R.drawable.square);
                 Intent intent = new Intent(getContext(), RecorderService.class);
                 getContext().startService(intent);
             }
@@ -41,8 +43,6 @@ public class RecordFragment extends Fragment {
             public void onClick(View v) {
                 Intent intent = new Intent(getContext(), RecorderService.class);
                 getContext().stopService(intent);
-                Intent broadcast = new Intent();
-                LocalBroadcastManager.getInstance(getContext()).sendBroadcast(broadcast);
             }
         });
 

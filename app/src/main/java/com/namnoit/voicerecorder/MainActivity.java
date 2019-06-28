@@ -3,8 +3,10 @@ package com.namnoit.voicerecorder;
 import android.Manifest;
 import android.content.Context;
 import android.content.DialogInterface;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.media.MediaMetadataRetriever;
 import android.os.Bundle;
 
 import androidx.annotation.NonNull;
@@ -14,11 +16,11 @@ import androidx.core.content.ContextCompat;
 import androidx.core.view.GravityCompat;
 import androidx.appcompat.app.ActionBarDrawerToggle;
 
-import android.util.Log;
 import android.view.MenuItem;
 
 import com.google.android.material.navigation.NavigationView;
 import com.google.android.material.tabs.TabLayout;
+import com.namnoit.voicerecorder.data.RecordingsDbHelper;
 import com.namnoit.voicerecorder.ui.main.RecordFragment;
 import com.namnoit.voicerecorder.ui.main.RecordingsFragment;
 import com.namnoit.voicerecorder.ui.main.PagerAdapter;
@@ -27,10 +29,16 @@ import androidx.drawerlayout.widget.DrawerLayout;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.viewpager.widget.ViewPager;
 
 import android.view.Menu;
 
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -43,10 +51,13 @@ public class MainActivity extends AppCompatActivity
     private static final int PERMISSION_REQUEST_CODE = 100;
     public static final String PREF_NAME = "config";
     public static final String KEY_QUALITY = "quality";
+    public static final String KEY_SAVED = "saved";
+    public static final String KEY_FILE_NAME = "filename";
+    public static final String KEY_DATE = "date";
     public static final int QUALITY_GOOD = 0;
     public static final int QUALITY_SMALL = 1;
     private SharedPreferences pref;
-    private int qualityChoosed;
+    private int qualityChosen;
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
@@ -81,7 +92,51 @@ public class MainActivity extends AppCompatActivity
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
         pref = getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
-        qualityChoosed = pref.getInt(KEY_QUALITY,QUALITY_GOOD);
+        qualityChosen = pref.getInt(KEY_QUALITY,QUALITY_GOOD);
+
+        // Recording corrupt cause by shutdown
+        if (!pref.getBoolean(KEY_SAVED,true)) {
+            FileInputStream fis = null;
+            String dir = getFilesDir().getAbsolutePath();
+            String tempFile = pref.getString(KEY_FILE_NAME, "");
+            String date = pref.getString(KEY_DATE, "");
+            try {
+                fis = new FileInputStream(dir + "/" + tempFile);
+                ByteArrayOutputStream baos = new ByteArrayOutputStream();
+
+                byte[] buffer = new byte[1024];
+                int read;
+                while ((read = fis.read(buffer)) != -1) {
+                    baos.write(buffer, 0, read);
+                    baos.flush();
+                }
+                byte[] fileByteArray = baos.toByteArray();
+
+                MediaMetadataRetriever metadataRetriever = new MediaMetadataRetriever();
+                metadataRetriever.setDataSource(dir + "/" + tempFile);
+                String duration = metadataRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION);
+                RecordingsDbHelper dbHelper = new RecordingsDbHelper(getApplicationContext());
+                dbHelper.insert(tempFile, fileByteArray, Integer.parseInt(duration), date);
+                SharedPreferences.Editor editor = pref.edit();
+                editor.putBoolean(MainActivity.KEY_SAVED, true);
+                editor.apply();
+                // Delete temporary file
+                File delFile = new File(dir + "/" + tempFile);
+                delFile.delete();
+                if (delFile.exists()) {
+                    delFile.getCanonicalFile().delete();
+                    if (delFile.exists()) {
+                        getApplicationContext().deleteFile(delFile.getName());
+                    }
+                }
+                Intent broadcast = new Intent(RecorderService.BROADCAST_RECORDING_INSERTED);
+                LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(broadcast);
+            } catch (FileNotFoundException e) {
+                e.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
 
         checkPermissions();
 
@@ -145,30 +200,30 @@ public class MainActivity extends AppCompatActivity
     public boolean onNavigationItemSelected(MenuItem item) {
         // Handle navigation view item clicks here.
         int id = item.getItemId();
-
+        DrawerLayout drawer = findViewById(R.id.drawer_layout);
         if (id == R.id.nav_quality) {
-
+            drawer.closeDrawer(GravityCompat.START,false);
             final CharSequence[] items = {"Good (AAC)","Small size (3GP)"};
             AlertDialog qualityDialog = new AlertDialog.Builder(MainActivity.this)
                     .setTitle(getResources().getString(R.string.text_quality_tiltle))
-                    .setSingleChoiceItems(items, qualityChoosed, new DialogInterface.OnClickListener() {
+                    .setSingleChoiceItems(items, qualityChosen, new DialogInterface.OnClickListener() {
                         public void onClick(DialogInterface dialog, int item) {
                             // Your code
-                            qualityChoosed = item;
+                            qualityChosen = item;
                         }
                     })
                     .setPositiveButton(R.string.ok, new DialogInterface.OnClickListener() {
                         @Override
                         public void onClick(DialogInterface dialog, int which) {
                             SharedPreferences.Editor editor = pref.edit();
-                            editor.putInt(KEY_QUALITY,qualityChoosed);
+                            editor.putInt(KEY_QUALITY, qualityChosen);
                             editor.apply();
                         }
                     })
                     .setOnDismissListener(new DialogInterface.OnDismissListener() {
                         @Override
                         public void onDismiss(DialogInterface dialog) {
-                            qualityChoosed = pref.getInt(KEY_QUALITY,QUALITY_GOOD);
+                            qualityChosen = pref.getInt(KEY_QUALITY,QUALITY_GOOD);
                         }
                     })
                     .create();
@@ -181,7 +236,7 @@ public class MainActivity extends AppCompatActivity
         }
 
         item.setCheckable(false);
-        DrawerLayout drawer = findViewById(R.id.drawer_layout);
+
         drawer.closeDrawer(GravityCompat.START);
         return true;
     }

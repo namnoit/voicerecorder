@@ -62,7 +62,7 @@ public class RecordingsDbHelper extends SQLiteOpenHelper {
                 null,
                 null,
                 null,
-                null);
+                RecordingsContract.RecordingsEntry.COLUMN_NAME + " DESC");
         if (cursor.moveToFirst()) {
             do {
                 Recording recording = new Recording(
@@ -73,6 +73,7 @@ public class RecordingsDbHelper extends SQLiteOpenHelper {
                 recordings.add(recording);
             } while (cursor.moveToNext());
         }
+        cursor.close();
         db.close();
         return recordings;
     }
@@ -99,9 +100,37 @@ public class RecordingsDbHelper extends SQLiteOpenHelper {
                 null);
         if (cursor != null) {
             cursor.moveToFirst();
-            return cursor.getBlob(cursor.getColumnIndex(RecordingsContract.RecordingsEntry.COLUMN_DATA));
+            byte[] audio = cursor.getBlob(cursor.getColumnIndex(RecordingsContract.RecordingsEntry.COLUMN_DATA));
+            cursor.close();
+            return audio;
         }
         else return null;
     }
 
+    public Recording getLast(){
+        SQLiteDatabase db = this.getReadableDatabase();
+        Cursor cursor = db.query(RecordingsContract.RecordingsEntry.TABLE_NAME,
+                new String[]{
+                        RecordingsContract.RecordingsEntry.COLUMN_ID,
+                        RecordingsContract.RecordingsEntry.COLUMN_NAME,
+                        RecordingsContract.RecordingsEntry.COLUMN_DURATION,
+                        RecordingsContract.RecordingsEntry.COLUMN_DATE,
+                },
+                null,
+                null,
+                null,
+                null,
+                null);
+        Recording recording = null;
+        if (cursor.moveToLast()) {
+            recording = new Recording(
+                    cursor.getInt(cursor.getColumnIndex(RecordingsContract.RecordingsEntry.COLUMN_ID)),
+                    cursor.getString(cursor.getColumnIndex(RecordingsContract.RecordingsEntry.COLUMN_NAME)),
+                    cursor.getInt(cursor.getColumnIndex(RecordingsContract.RecordingsEntry.COLUMN_DURATION)),
+                    cursor.getString(cursor.getColumnIndex(RecordingsContract.RecordingsEntry.COLUMN_DATE)));
+        }
+        cursor.close();
+        db.close();
+        return recording;
+    }
 }
