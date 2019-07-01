@@ -5,6 +5,7 @@ import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
+import android.content.BroadcastReceiver;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
@@ -13,12 +14,18 @@ import android.media.MediaMetadataRetriever;
 import android.media.MediaRecorder;
 import android.os.Build;
 import android.os.Environment;
+import android.os.Handler;
 import android.os.IBinder;
+import android.os.SystemClock;
 import android.util.Log;
+import android.widget.Chronometer;
+import android.widget.TextView;
 
+import androidx.annotation.RequiresApi;
 import androidx.core.app.NotificationCompat;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
+import com.namnoit.voicerecorder.data.Recording;
 import com.namnoit.voicerecorder.data.RecordingsDbHelper;
 
 import java.io.ByteArrayOutputStream;
@@ -29,6 +36,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.Timer;
+import java.util.TimerTask;
 
 public class RecorderService extends Service {
     private MediaRecorder recorder;
@@ -36,9 +45,19 @@ public class RecorderService extends Service {
     private SharedPreferences pref;
     private static final String CHANNEL_ID = "Voice_Recorder";
     public static final String BROADCAST_RECORDING_INSERTED = "RECORDING.INSERTED";
+    public static final String BROADCAST_UPDATE_TIME = "RECORDING.UPDATE.TIME";
+    public static final int STOP = 0;
+    public static final int RECORDING = 1;
     private String date;
     private String dir;
     private Date dateNow;
+
+    private Handler handler = new Handler();
+    long timeInMilliseconds = 0L;
+    private long initial_time;
+    private int timer;
+    Intent broadcastUpdateTime = new Intent(BROADCAST_UPDATE_TIME);
+
     public RecorderService() {
     }
 
@@ -70,7 +89,7 @@ public class RecorderService extends Service {
         Notification notification =
                 new NotificationCompat.Builder(this, CHANNEL_ID)
                         .setContentTitle(getText(R.string.notification_title_recording))
-                        .setContentText(getText(R.string.notification_title_recording))
+                        .setContentText(getText(R.string.notification_text_recording))
                         .setSmallIcon(R.drawable.ic_launcher_foreground)
                         .setContentIntent(pendingIntent)
                         .build();
@@ -117,8 +136,14 @@ public class RecorderService extends Service {
             startForeground(1, notification);
             recorder.prepare();
             recorder.start();
+
+            initial_time = SystemClock.uptimeMillis();
+
+            handler.removeCallbacks(sendUpdatesToUI);
+            handler.postDelayed(sendUpdatesToUI, 1000);
+
             SharedPreferences.Editor editor = pref.edit();
-            editor.putBoolean(MainActivity.KEY_SAVED,false);
+            editor.putInt(MainActivity.KEY_STATUS,1);
             editor.putString(MainActivity.KEY_FILE_NAME,tempFile);
             editor.putString(MainActivity.KEY_DATE,date);
             editor.apply();
@@ -132,6 +157,7 @@ public class RecorderService extends Service {
 
     @Override
     public void onDestroy() {
+        handler.removeCallbacks(sendUpdatesToUI);
         recorder.stop();
         recorder.reset();
         recorder.release();
@@ -156,7 +182,7 @@ public class RecorderService extends Service {
             RecordingsDbHelper dbHelper = new RecordingsDbHelper(getApplicationContext());
             dbHelper.insert(tempFile,fileByteArray,Integer.parseInt(duration),date);
             SharedPreferences.Editor editor = pref.edit();
-            editor.putBoolean(MainActivity.KEY_SAVED,true);
+            editor.putInt(MainActivity.KEY_STATUS,0);
             editor.apply();
             // Delete temporary file
             File delFile = new File(dir + "/" + tempFile);
@@ -179,4 +205,18 @@ public class RecorderService extends Service {
 
         super.onDestroy();
     }
+
+    private Runnable sendUpdatesToUI = new Runnable() {
+        public void run() {
+            timeInMilliseconds = SystemClock.uptimeMillis() - initial_time;
+            timer = (int) timeInMilliseconds / 1000;
+
+            broadcastUpdateTime.putExtra("time", timer);
+            LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(broadcastUpdateTime);
+            handler.postDelayed(this, 1000); // 1 seconds
+            Log.d("time",Integer.toString(timer));
+        }
+    };
+
+
 }

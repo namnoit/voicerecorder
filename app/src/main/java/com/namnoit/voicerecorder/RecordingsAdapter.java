@@ -1,7 +1,9 @@
 package com.namnoit.voicerecorder;
 
 import android.content.Context;
+import android.content.Intent;
 import android.media.MediaPlayer;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -13,7 +15,6 @@ import com.namnoit.voicerecorder.data.Recording;
 import com.namnoit.voicerecorder.data.RecordingsDbHelper;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -21,11 +22,12 @@ import java.util.ArrayList;
 public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.ViewHolder>{
     private ArrayList<Recording> recordingsList;
     private Context context;
-    private MediaPlayer mediaPlayer = new MediaPlayer();
+    private MediaPlayer mediaPlayer;
 
-    public RecordingsAdapter(ArrayList<Recording> recordings, Context c){
+    public RecordingsAdapter(ArrayList<Recording> recordings, Context c, MediaPlayer player){
         recordingsList = recordings;
         context = c;
+        mediaPlayer = player;
     }
 
     @NonNull
@@ -52,28 +54,20 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
             public void onClick(View v) {
                 try {
                     // create temp file that will hold byte array
-                    File tempMp3 = File.createTempFile("kurchina", "mp3", holder.textDate.getContext().getCacheDir());
-                    tempMp3.deleteOnExit();
+                    File tempMp3 = File.createTempFile("recording",
+                            "mp3",
+                            holder.textDate.getContext().getCacheDir());
+//                    tempMp3.deleteOnExit();
                     FileOutputStream fos = new FileOutputStream(tempMp3);
                     byte[] soundByteArray = new RecordingsDbHelper(holder.textDate.getContext())
                             .getAudio(holder.id);
                     fos.write(soundByteArray);
                     fos.close();
 
-                    // resetting mediaplayer instance to evade problems
-                    mediaPlayer.reset();
-
-                    // In case you run into issues with threading consider new instance like:
-                    // MediaPlayer mediaPlayer = new MediaPlayer();
-
-                    // Tried passing path directly, but kept getting
-                    // "Prepare failed.: status=0x1"
-                    // so using file descriptor instead
-                    FileInputStream fis = new FileInputStream(tempMp3);
-                    mediaPlayer.setDataSource(fis.getFD());
-
-                    mediaPlayer.prepare();
-                    mediaPlayer.start();
+                    Intent intent = new Intent(context, RecorderPlayerService.class);
+                    intent.setAction("PLAY");
+                    context.startService(intent);
+                    Log.d("play","start");
                 } catch (IOException ex) {
                     ex.printStackTrace();
                 }
@@ -88,7 +82,7 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
 
 
     public class ViewHolder extends RecyclerView.ViewHolder{
-        int id;
+        private int id;
         private TextView textName, textDuration, textDate;
         public ViewHolder(@NonNull View itemView) {
             super(itemView);

@@ -16,10 +16,12 @@
             android:name=".RecorderService"
             android:enabled="true"
             android:exported="true"></service>
+        <service android:name=".RecorderPlayerService"/>
 
         <activity
             android:name=".MainActivity"
             android:label="@string/app_name"
+            android:screenOrientation="portrait"
             android:theme="@style/AppTheme.NoActionBar">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

@@ -18,5 +18,8 @@
     <string name="tab_record">Record</string>
     <string name="tab_recordings">Recordings</string>
     <string name="notification_title_recording">Recording…</string>
+    <string name="notification_text_recording">Tap to return recording</string>
+    <string name="toast_recording_saved">Recording saved</string>
+    <string name="error_open_file">Error when open file</string>
 
 </resources>

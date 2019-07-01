@@ -1,6 +1,7 @@
 package com.namnoit.voicerecorder;
 
 import android.Manifest;
+import android.app.ActivityManager;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -51,7 +52,7 @@ public class MainActivity extends AppCompatActivity
     private static final int PERMISSION_REQUEST_CODE = 100;
     public static final String PREF_NAME = "config";
     public static final String KEY_QUALITY = "quality";
-    public static final String KEY_SAVED = "saved";
+    public static final String KEY_STATUS = "status";
     public static final String KEY_FILE_NAME = "filename";
     public static final String KEY_DATE = "date";
     public static final int QUALITY_GOOD = 0;
@@ -95,7 +96,8 @@ public class MainActivity extends AppCompatActivity
         qualityChosen = pref.getInt(KEY_QUALITY,QUALITY_GOOD);
 
         // Recording corrupt cause by shutdown
-        if (!pref.getBoolean(KEY_SAVED,true)) {
+        if (pref.getInt(KEY_STATUS,0) != RecorderService.STOP
+                && !isRecorderServiceRunning(RecorderService.class)) {
             FileInputStream fis = null;
             String dir = getFilesDir().getAbsolutePath();
             String tempFile = pref.getString(KEY_FILE_NAME, "");
@@ -114,11 +116,12 @@ public class MainActivity extends AppCompatActivity
 
                 MediaMetadataRetriever metadataRetriever = new MediaMetadataRetriever();
                 metadataRetriever.setDataSource(dir + "/" + tempFile);
-                String duration = metadataRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION);
+                String duration =
+                        metadataRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION);
                 RecordingsDbHelper dbHelper = new RecordingsDbHelper(getApplicationContext());
                 dbHelper.insert(tempFile, fileByteArray, Integer.parseInt(duration), date);
                 SharedPreferences.Editor editor = pref.edit();
-                editor.putBoolean(MainActivity.KEY_SAVED, true);
+                editor.putInt(MainActivity.KEY_STATUS, RecorderService.STOP);
                 editor.apply();
                 // Delete temporary file
                 File delFile = new File(dir + "/" + tempFile);
@@ -129,6 +132,7 @@ public class MainActivity extends AppCompatActivity
                         getApplicationContext().deleteFile(delFile.getName());
                     }
                 }
+                // Notify to update list
                 Intent broadcast = new Intent(RecorderService.BROADCAST_RECORDING_INSERTED);
                 LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(broadcast);
             } catch (FileNotFoundException e) {
@@ -241,9 +245,13 @@ public class MainActivity extends AppCompatActivity
         return true;
     }
 
-    @Override
-    protected void onResume() {
-        super.onResume();
-
+    private boolean isRecorderServiceRunning(Class<?> serviceClass) {
+        ActivityManager manager = (ActivityManager) getApplicationContext().getSystemService(Context.ACTIVITY_SERVICE);
+        for (ActivityManager.RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
+            if (serviceClass.getName().equals(service.service.getClassName())) {
+                return true;
+            }
+        }
+        return false;
     }
 }
