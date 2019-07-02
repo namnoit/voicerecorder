@@ -2,8 +2,6 @@ package com.namnoit.voicerecorder;
 
 import android.content.Context;
 import android.content.Intent;
-import android.media.MediaPlayer;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -22,12 +20,10 @@ import java.util.ArrayList;
 public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.ViewHolder>{
     private ArrayList<Recording> recordingsList;
     private Context context;
-    private MediaPlayer mediaPlayer;
 
-    public RecordingsAdapter(ArrayList<Recording> recordings, Context c, MediaPlayer player){
+    public RecordingsAdapter(ArrayList<Recording> recordings, Context c){
         recordingsList = recordings;
         context = c;
-        mediaPlayer = player;
     }
 
     @NonNull
@@ -54,9 +50,11 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
             public void onClick(View v) {
                 try {
                     // create temp file that will hold byte array
-                    File tempMp3 = File.createTempFile("recording",
-                            "mp3",
-                            holder.textDate.getContext().getCacheDir());
+
+//                    File tempMp3 = File.createTempFile("recording",
+//                            "mp3",
+//                            holder.textDate.getContext().getCacheDir());
+                    File tempMp3 = new File(holder.textName.getContext().getCacheDir().getAbsolutePath() + RecordingPlaybackService.cacheFile);
 //                    tempMp3.deleteOnExit();
                     FileOutputStream fos = new FileOutputStream(tempMp3);
                     byte[] soundByteArray = new RecordingsDbHelper(holder.textDate.getContext())
@@ -64,10 +62,10 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
                     fos.write(soundByteArray);
                     fos.close();
 
-                    Intent intent = new Intent(context, RecorderPlayerService.class);
+                    Intent intent = new Intent(context, RecordingPlaybackService.class);
+                    intent.putExtra(RecordingPlaybackService.KEY_FILE_NAME,holder.textName.getText().toString());
                     intent.setAction("PLAY");
                     context.startService(intent);
-                    Log.d("play","start");
                 } catch (IOException ex) {
                     ex.printStackTrace();
                 }

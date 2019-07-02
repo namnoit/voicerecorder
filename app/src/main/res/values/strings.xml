@@ -21,5 +21,7 @@
     <string name="notification_text_recording">Tap to return recording</string>
     <string name="toast_recording_saved">Recording saved</string>
     <string name="error_open_file">Error when open file</string>
+    <string name="notification_text_playing">Playing</string>
+    <string name="notification_text_paused">Paused</string>
 
 </resources>

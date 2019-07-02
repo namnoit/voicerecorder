@@ -8,6 +8,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:backgroundTint="@color/colorPrimary"
+        app:cardCornerRadius="10dp"
         android:layout_margin="4dp">
 
         <RelativeLayout
@@ -42,22 +43,28 @@
                 android:layout_marginEnd="10dp"
                 android:layout_marginBottom="10dp"
                 android:layout_toStartOf="@id/playRecordingButton"
+                android:textColor="@color/colorFab"
                 android:maxLines="1"
                 android:textSize="20sp" />
 
             <TextView
                 android:id="@+id/recordingDuration"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
                 android:layout_alignTop="@id/recordingCurrent"
                 android:layout_alignEnd="@id/seekBar"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content" />
+                android:textColor="@color/colorFab"
+                android:text="00:00:00" />
 
             <TextView
                 android:id="@+id/recordingCurrent"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="5dp"
                 android:layout_below="@id/seekBar"
                 android:layout_alignStart="@id/seekBar"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content" />
+                android:textColor="@color/colorFab"
+                android:text="00:00:00" />
 
             <SeekBar
                 android:id="@+id/seekBar"

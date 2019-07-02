@@ -5,40 +5,28 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.graphics.drawable.LayerDrawable;
-import android.media.MediaPlayer;
 import android.os.Bundle;
-
 import androidx.fragment.app.Fragment;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.recyclerview.widget.DefaultItemAnimator;
-import androidx.recyclerview.widget.DividerItemDecoration;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
-
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewTreeObserver;
-import android.widget.AbsListView;
 import android.widget.ImageButton;
 import android.widget.SeekBar;
-import android.widget.Toast;
 
+import com.namnoit.voicerecorder.MainActivity;
 import com.namnoit.voicerecorder.R;
-import com.namnoit.voicerecorder.RecorderPlayerService;
+import com.namnoit.voicerecorder.RecordingPlaybackService;
 import com.namnoit.voicerecorder.RecorderService;
 import com.namnoit.voicerecorder.RecordingsAdapter;
 import com.namnoit.voicerecorder.data.Recording;
 import com.namnoit.voicerecorder.data.RecordingsDbHelper;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
 import java.util.ArrayList;
-import java.util.List;
 
 /**
  * A simple {@link Fragment} subclass.
@@ -51,7 +39,8 @@ public class RecordingsFragment extends Fragment {
     private ImageButton closeRecordingButton, playRecordingButton;
     private SeekBar seekBar;
     private View playback;
-    private MediaPlayer mediaPlayer = new MediaPlayer();
+    private enum PlaybackStatus {playing, paused, stopped}
+    private PlaybackStatus status = PlaybackStatus.playing;
     // Update list when recordings has been successful but hasn't been saved yet
     private BroadcastReceiver receiver = new BroadcastReceiver() {
         @Override
@@ -66,37 +55,6 @@ public class RecordingsFragment extends Fragment {
     };
     // Set Padding for recyclerView
     private ViewTreeObserver vto;
-
-
-
-    private void playMp3(byte[] mp3SoundByteArray) {
-        try {
-            // create temp file that will hold byte array
-            File tempMp3 = File.createTempFile("kurchina", "mp3", getContext().getCacheDir());
-            tempMp3.deleteOnExit();
-            FileOutputStream fos = new FileOutputStream(tempMp3);
-            fos.write(mp3SoundByteArray);
-            fos.close();
-
-            // resetting mediaplayer instance to evade problems
-            mediaPlayer.reset();
-
-            // In case you run into issues with threading consider new instance like:
-            // MediaPlayer mediaPlayer = new MediaPlayer();
-
-            // Tried passing path directly, but kept getting
-            // "Prepare failed.: status=0x1"
-            // so using file descriptor instead
-            FileInputStream fis = new FileInputStream(tempMp3);
-            mediaPlayer.setDataSource(fis.getFD());
-
-            mediaPlayer.prepare();
-            mediaPlayer.start();
-        } catch (IOException ex) {
-            String s = ex.toString();
-            ex.printStackTrace();
-        }
-    }
 
     public RecordingsFragment() {
         // Required empty public constructor
@@ -126,16 +84,28 @@ public class RecordingsFragment extends Fragment {
         playRecordingButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Intent playerIntent = new Intent(getContext(), RecorderPlayerService.class);
-                playerIntent.setAction("PAUSE");
-                getContext().startService(playerIntent);
+                if (status == PlaybackStatus.playing) {
+                    Intent playbackIntent = new Intent(getContext(), RecordingPlaybackService.class);
+                    playbackIntent.setAction(RecordingPlaybackService.ACTION_PAUSE);
+                    getContext().startService(playbackIntent);
+                    playRecordingButton.setImageResource(R.drawable.ic_play);
+                    status = PlaybackStatus.paused;
+                }
+                else if (status == PlaybackStatus.paused){
+                    Intent playbackIntent = new Intent(getContext(), RecordingPlaybackService.class);
+                    playbackIntent.setAction(RecordingPlaybackService.ACTION_RESUME);
+                    getContext().startService(playbackIntent);
+                    playRecordingButton.setImageResource(R.drawable.ic_pause_white);
+                    status = PlaybackStatus.playing;
+                }
             }
         });
         closeRecordingButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Intent playerIntent = new Intent(getContext(), RecorderPlayerService.class);
+                Intent playerIntent = new Intent(getContext(), RecordingPlaybackService.class);
                 getContext().stopService(playerIntent);
+                status = PlaybackStatus.stopped;
             }
         });
         recyclerView = view.findViewById(R.id.list_recordings);
@@ -143,7 +113,7 @@ public class RecordingsFragment extends Fragment {
 
         recyclerView.setLayoutManager(layoutManager);
         recyclerView.setItemAnimator(new DefaultItemAnimator());
-        recordingsAdapter = new RecordingsAdapter(list,getContext(),mediaPlayer);
+        recordingsAdapter = new RecordingsAdapter(list,getContext());
         recyclerView.setAdapter(recordingsAdapter);
 
         playback = view.findViewById(R.id.playback);

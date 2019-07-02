@@ -214,7 +214,6 @@ public class RecorderService extends Service {
             broadcastUpdateTime.putExtra("time", timer);
             LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(broadcastUpdateTime);
             handler.postDelayed(this, 1000); // 1 seconds
-            Log.d("time",Integer.toString(timer));
         }
     };
 

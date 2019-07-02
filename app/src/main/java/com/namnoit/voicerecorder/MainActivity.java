@@ -97,7 +97,7 @@ public class MainActivity extends AppCompatActivity
 
         // Recording corrupt cause by shutdown
         if (pref.getInt(KEY_STATUS,0) != RecorderService.STOP
-                && !isRecorderServiceRunning(RecorderService.class)) {
+                && !isServiceRunning(RecorderService.class)) {
             FileInputStream fis = null;
             String dir = getFilesDir().getAbsolutePath();
             String tempFile = pref.getString(KEY_FILE_NAME, "");
@@ -245,7 +245,7 @@ public class MainActivity extends AppCompatActivity
         return true;
     }
 
-    private boolean isRecorderServiceRunning(Class<?> serviceClass) {
+    private boolean isServiceRunning(Class<?> serviceClass) {
         ActivityManager manager = (ActivityManager) getApplicationContext().getSystemService(Context.ACTIVITY_SERVICE);
         for (ActivityManager.RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
             if (serviceClass.getName().equals(service.service.getClassName())) {

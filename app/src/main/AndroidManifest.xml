@@ -16,7 +16,7 @@
             android:name=".RecorderService"
             android:enabled="true"
             android:exported="true"></service>
-        <service android:name=".RecorderPlayerService"/>
+        <service android:name=".RecordingPlaybackService"/>
 
         <activity
             android:name=".MainActivity"
