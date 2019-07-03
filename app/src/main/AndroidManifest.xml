@@ -13,10 +13,10 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
         <service
-            android:name=".RecorderService"
+            android:name=".service.RecorderService"
             android:enabled="true"
             android:exported="true"></service>
-        <service android:name=".RecordingPlaybackService"/>
+        <service android:name=".service.RecordingPlaybackService"/>
 
         <activity
             android:name=".MainActivity"

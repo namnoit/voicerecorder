@@ -22,6 +22,7 @@ import android.view.MenuItem;
 import com.google.android.material.navigation.NavigationView;
 import com.google.android.material.tabs.TabLayout;
 import com.namnoit.voicerecorder.data.RecordingsDbHelper;
+import com.namnoit.voicerecorder.service.RecorderService;
 import com.namnoit.voicerecorder.ui.main.RecordFragment;
 import com.namnoit.voicerecorder.ui.main.RecordingsFragment;
 import com.namnoit.voicerecorder.ui.main.PagerAdapter;
@@ -53,7 +54,7 @@ public class MainActivity extends AppCompatActivity
     public static final String PREF_NAME = "config";
     public static final String KEY_QUALITY = "quality";
     public static final String KEY_STATUS = "status";
-    public static final String KEY_FILE_NAME = "filename";
+    public static final String KEY_FILE_NAME_RECORDING = "file_name_recording";
     public static final String KEY_DATE = "date";
     public static final int QUALITY_GOOD = 0;
     public static final int QUALITY_SMALL = 1;
@@ -100,7 +101,7 @@ public class MainActivity extends AppCompatActivity
                 && !isServiceRunning(RecorderService.class)) {
             FileInputStream fis = null;
             String dir = getFilesDir().getAbsolutePath();
-            String tempFile = pref.getString(KEY_FILE_NAME, "");
+            String tempFile = pref.getString(KEY_FILE_NAME_RECORDING, "");
             String date = pref.getString(KEY_DATE, "");
             try {
                 fis = new FileInputStream(dir + "/" + tempFile);

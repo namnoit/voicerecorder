@@ -1,4 +1,4 @@
-package com.namnoit.voicerecorder;
+package com.namnoit.voicerecorder.service;
 
 import android.app.Notification;
 import android.app.NotificationChannel;
@@ -25,6 +25,8 @@ import androidx.annotation.RequiresApi;
 import androidx.core.app.NotificationCompat;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
+import com.namnoit.voicerecorder.MainActivity;
+import com.namnoit.voicerecorder.R;
 import com.namnoit.voicerecorder.data.Recording;
 import com.namnoit.voicerecorder.data.RecordingsDbHelper;
 
@@ -144,7 +146,7 @@ public class RecorderService extends Service {
 
             SharedPreferences.Editor editor = pref.edit();
             editor.putInt(MainActivity.KEY_STATUS,1);
-            editor.putString(MainActivity.KEY_FILE_NAME,tempFile);
+            editor.putString(MainActivity.KEY_FILE_NAME_RECORDING,tempFile);
             editor.putString(MainActivity.KEY_DATE,date);
             editor.apply();
         } catch (IllegalStateException e) {

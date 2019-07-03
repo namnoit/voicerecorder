@@ -11,11 +11,14 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.namnoit.voicerecorder.data.Recording;
 import com.namnoit.voicerecorder.data.RecordingsDbHelper;
+import com.namnoit.voicerecorder.service.RecordingPlaybackService;
+import com.namnoit.voicerecorder.ui.main.RecordingsFragment;
 
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
+
 
 public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.ViewHolder>{
     private ArrayList<Recording> recordingsList;
@@ -37,7 +40,7 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
     @Override
     public void onBindViewHolder(@NonNull final ViewHolder holder, final int position) {
         holder.textName.setText(recordingsList.get(position).getName());
-        int seconds = recordingsList.get(position).getDuration()/1000;
+        int seconds = Math.round((float)recordingsList.get(position).getDuration()/1000);
         long s = seconds % 60;
         long m = (seconds / 60) % 60;
         long h = (seconds / (60 * 60)) % 24;
@@ -63,7 +66,7 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
                     fos.close();
 
                     Intent intent = new Intent(context, RecordingPlaybackService.class);
-                    intent.putExtra(RecordingPlaybackService.KEY_FILE_NAME,holder.textName.getText().toString());
+                    intent.putExtra(RecordingsFragment.fileName,holder.textName.getText().toString());
                     intent.setAction("PLAY");
                     context.startService(intent);
                 } catch (IOException ex) {
