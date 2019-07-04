@@ -23,5 +23,8 @@
     <string name="error_open_file">Error when open file</string>
     <string name="notification_text_playing">Playing</string>
     <string name="notification_text_paused">Paused</string>
-
+    <string name="resume">Resume</string>
+    <string name="pause">Pause</string>
+    <string name="stop">Stop</string>
 </resources>
+

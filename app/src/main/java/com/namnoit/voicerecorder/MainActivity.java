@@ -23,6 +23,7 @@ import com.google.android.material.navigation.NavigationView;
 import com.google.android.material.tabs.TabLayout;
 import com.namnoit.voicerecorder.data.RecordingsDbHelper;
 import com.namnoit.voicerecorder.service.RecorderService;
+import com.namnoit.voicerecorder.service.RecordingPlaybackService;
 import com.namnoit.voicerecorder.ui.main.RecordFragment;
 import com.namnoit.voicerecorder.ui.main.RecordingsFragment;
 import com.namnoit.voicerecorder.ui.main.PagerAdapter;
@@ -181,7 +182,10 @@ public class MainActivity extends AppCompatActivity
         if (drawer.isDrawerOpen(GravityCompat.START)) {
             drawer.closeDrawer(GravityCompat.START);
         } else {
-            super.onBackPressed();
+            if (isServiceRunning(RecordingPlaybackService.class)
+                    || isServiceRunning(RecorderService.class))
+                moveTaskToBack(true);
+            else super.onBackPressed();
         }
     }
 

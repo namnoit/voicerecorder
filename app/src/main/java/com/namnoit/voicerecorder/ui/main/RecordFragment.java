@@ -18,6 +18,7 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.namnoit.voicerecorder.R;
 import com.namnoit.voicerecorder.service.RecorderService;
+import com.namnoit.voicerecorder.service.RecordingPlaybackService;
 
 /**
  * A placeholder fragment containing a simple view.
@@ -45,12 +46,11 @@ public class RecordFragment extends Fragment {
             @NonNull LayoutInflater inflater, ViewGroup container,
             Bundle savedInstanceState) {
         View root = inflater.inflate(R.layout.fragment_record, container, false);
-
-        recordStopButton = root.findViewById(R.id.button_record_stop);
-        textTime = root.findViewById(R.id.textTime);
         LocalBroadcastManager.getInstance(getContext()).registerReceiver(receiver,
                 new IntentFilter(RecorderService.BROADCAST_UPDATE_TIME));
-        if (isRecorderServiceRunning(RecorderService.class)){
+        recordStopButton = root.findViewById(R.id.button_record_stop);
+        textTime = root.findViewById(R.id.textTime);
+        if (isServiceRunning(RecorderService.class)){
             recording = true;
             recordStopButton.setImageResource(R.drawable.square);
         }
@@ -64,6 +64,10 @@ public class RecordFragment extends Fragment {
                 mLastClickTime = SystemClock.elapsedRealtime();
                 // Start recording
                 if (!recording) {
+                    if (isServiceRunning(RecordingPlaybackService.class)){
+                        Intent stopIntent = new Intent(getContext(),RecordingPlaybackService.class);
+                        getActivity().stopService(stopIntent);
+                    }
                     Intent intent = new Intent(getContext(), RecorderService.class);
                     getContext().startService(intent);
                     recordStopButton.setImageResource(R.drawable.square);
@@ -83,7 +87,7 @@ public class RecordFragment extends Fragment {
         return root;
     }
 
-    private boolean isRecorderServiceRunning(Class<?> serviceClass) {
+    private boolean isServiceRunning(Class<?> serviceClass) {
         ActivityManager manager = (ActivityManager) getContext().getSystemService(Context.ACTIVITY_SERVICE);
         for (ActivityManager.RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
             if (serviceClass.getName().equals(service.service.getClassName())) {

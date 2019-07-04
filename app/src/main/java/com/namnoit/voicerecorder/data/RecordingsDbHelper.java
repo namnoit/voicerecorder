@@ -133,4 +133,12 @@ public class RecordingsDbHelper extends SQLiteOpenHelper {
         db.close();
         return recording;
     }
+
+    public void delete(int id){
+        SQLiteDatabase db = this.getWritableDatabase();
+        db.delete(RecordingsContract.RecordingsEntry.TABLE_NAME,
+                RecordingsContract.RecordingsEntry.COLUMN_ID + "=?",
+                new String[]{Integer.toString(id)});
+        db.close();
+    }
 }

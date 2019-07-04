@@ -42,6 +42,7 @@ public class RecordingPlaybackService extends Service {
     public static final String ACTION_PAUSE = "PAUSE";
     public static final String ACTION_RESUME = "RESUME";
     public static final String ACTION_STOP_SERVICE = "STOP";
+    public static final String ACTION_SEEK = "SEEK";
 
 
     @Nullable
@@ -67,7 +68,9 @@ public class RecordingPlaybackService extends Service {
                 handler.postDelayed(updateSeekBarTask,1000);
                 SharedPreferences pref = getSharedPreferences(MainActivity.PREF_NAME, Context.MODE_PRIVATE);
                 SharedPreferences.Editor editor = pref.edit();
-                editor.putInt(MainActivity.KEY_STATUS,0);
+                editor.putInt(MainActivity.KEY_STATUS,RecordingsFragment.STATUS_PLAYING);
+                editor.putString(RecordingsFragment.fileName,fileName);
+                editor.putInt(RecordingsFragment.KEY_DURATION,duration);
                 editor.apply();
             }
         });
@@ -84,7 +87,7 @@ public class RecordingPlaybackService extends Service {
         String fn = intent.getStringExtra(RecordingsFragment.fileName);
         if (fn != null) fileName = fn;
         if (Objects.equals(intent.getAction(), ACTION_PLAY)) {
-            createNotification(fileName, getResources().getString(R.string.notification_text_playing));
+            createNotification(fileName, RecordingsFragment.STATUS_PLAYING);
             mediaPlayer.reset();
             try {
                 mediaPlayer.setDataSource(cacheFilePath);
@@ -98,28 +101,42 @@ public class RecordingPlaybackService extends Service {
             }
         }
         if (Objects.equals(intent.getAction(), ACTION_PAUSE)) {
-            createNotification(fileName, getResources().getString(R.string.notification_text_paused));
-            SharedPreferences pref = getSharedPreferences(MainActivity.PREF_NAME, Context.MODE_PRIVATE);
-            SharedPreferences.Editor editor = pref.edit();
-            editor.putInt(MainActivity.KEY_STATUS,1);
-            editor.putInt(RecordingsFragment.currentPosition,currentPosition);
-            editor.putInt(RecordingsFragment.KEY_DURATION,duration);
-            editor.apply();
+            createNotification(fileName, RecordingsFragment.STATUS_PAUSED);
+
             if (mediaPlayer != null && mediaPlayer.isPlaying()) {
                 handler.removeCallbacks(updateSeekBarTask);
                 currentPosition = mediaPlayer.getCurrentPosition();
                 mediaPlayer.pause();
+                SharedPreferences pref = getSharedPreferences(MainActivity.PREF_NAME, Context.MODE_PRIVATE);
+                SharedPreferences.Editor editor = pref.edit();
+                editor.putInt(MainActivity.KEY_STATUS,RecordingsFragment.STATUS_PAUSED);
+                editor.putInt(RecordingsFragment.currentPosition,currentPosition);
+//            editor.putInt(RecordingsFragment.KEY_DURATION,duration);
+                editor.apply();
                 broadcastPaused.putExtra(RecordingsFragment.currentPosition,currentPosition);
                 LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(broadcastPaused);
 
             }
         }
         if (Objects.equals(intent.getAction(), ACTION_RESUME)) {
-            createNotification(fileName, getResources().getString(R.string.notification_text_playing));
+            createNotification(fileName, RecordingsFragment.STATUS_PLAYING);
             if (mediaPlayer != null && !mediaPlayer.isPlaying()) {
                 handler.post(updateSeekBarTask);
                 mediaPlayer.seekTo(currentPosition);
                 mediaPlayer.start();
+                SharedPreferences pref = getSharedPreferences(MainActivity.PREF_NAME, Context.MODE_PRIVATE);
+                SharedPreferences.Editor editor = pref.edit();
+                editor.putInt(MainActivity.KEY_STATUS,RecordingsFragment.STATUS_PLAYING);
+                editor.apply();
+            }
+        }
+        if (Objects.equals(intent.getAction(), ACTION_SEEK)) {
+            int seekTo = intent.getIntExtra(RecordingsFragment.seekPosition,0);
+            if (mediaPlayer != null) {
+
+                currentPosition = Math.round((float)seekTo/100*duration);
+
+                mediaPlayer.seekTo(currentPosition);
             }
         }
         if (Objects.equals(intent.getAction(), ACTION_STOP_SERVICE)) stopSelf();
@@ -132,6 +149,10 @@ public class RecordingPlaybackService extends Service {
         // Delete temporary file
         handler.removeCallbacks(updateSeekBarTask);
         LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(broadcastFinishPlaying);
+        SharedPreferences pref = getSharedPreferences(MainActivity.PREF_NAME, Context.MODE_PRIVATE);
+        SharedPreferences.Editor editor = pref.edit();
+        editor.putInt(MainActivity.KEY_STATUS,RecordingsFragment.STATUS_STOPPED);
+        editor.apply();
         try {
             File delFile = new File(cacheFilePath);
             delFile.delete();
@@ -151,19 +172,16 @@ public class RecordingPlaybackService extends Service {
     }
 
 
-
-
-    private void createNotification(String fileName, String status){
+    private void createNotification(String fileName, int status) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationManager manager = getSystemService(NotificationManager.class);
             NotificationChannel serviceChannel = new NotificationChannel(
                     CHANNEL_ID,
-                    "Voice Recorder Playback",
+                    "Recordings Playback",
                     NotificationManager.IMPORTANCE_LOW
             );
             manager.createNotificationChannel(serviceChannel);
         }
-
 
 
         Intent notificationIntent = new Intent(this, MainActivity.class);
@@ -172,26 +190,35 @@ public class RecordingPlaybackService extends Service {
         notificationIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         PendingIntent pendingIntent =
                 PendingIntent.getActivity(this, 0, notificationIntent, 0);
-        // To stop
+        // Stop button
         Intent stopIntent = new Intent(this, RecordingPlaybackService.class);
         stopIntent.setAction(ACTION_STOP_SERVICE);
-        PendingIntent stopPendingIntent = PendingIntent.getService(this, 0, stopIntent,PendingIntent.FLAG_CANCEL_CURRENT);
-        // To pause
-        Intent pauseIntent = new Intent(this, RecordingPlaybackService.class);
-        pauseIntent.setAction(ACTION_PAUSE);
-        PendingIntent pausePendingIntent = PendingIntent.getService(this, 0, pauseIntent,PendingIntent.FLAG_CANCEL_CURRENT);
+        PendingIntent stopPendingIntent = PendingIntent.getService(this, 0, stopIntent, PendingIntent.FLAG_CANCEL_CURRENT);
 
-        Notification notification =
-                new NotificationCompat.Builder(this, CHANNEL_ID)
-                        .setContentTitle(fileName)
-                        .setContentText(status)
-                        .setSmallIcon(R.drawable.ic_launcher_foreground)
-                        .setContentIntent(pendingIntent)
-                        .setOngoing(true)
-                        .addAction(R.drawable.ic_pause_white,"Pause",pausePendingIntent)
-                        .addAction(R.drawable.ic_close,"Stop",stopPendingIntent)
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
+                .setContentTitle(fileName)
+                .setSmallIcon(R.drawable.ic_launcher_foreground)
+                .setContentIntent(pendingIntent)
+                .setOngoing(true);
+        if (status == RecordingsFragment.STATUS_PLAYING) {
+            // Pause button
+            Intent pauseIntent = new Intent(this, RecordingPlaybackService.class);
+            pauseIntent.setAction(ACTION_PAUSE);
+            PendingIntent pausePendingIntent = PendingIntent.getService(this, 0, pauseIntent, PendingIntent.FLAG_CANCEL_CURRENT);
+            builder.setContentText(getResources().getString(R.string.notification_text_playing))
+                    .addAction(R.drawable.ic_pause_white, getResources().getString(R.string.pause), pausePendingIntent);
+        } else {
+            // Resume button
+            Intent resumeIntent = new Intent(this, RecordingPlaybackService.class);
+            resumeIntent.setAction(ACTION_RESUME);
+            PendingIntent resumePendingIntent = PendingIntent.getService(this, 0, resumeIntent, PendingIntent.FLAG_CANCEL_CURRENT);
+            builder.setContentText(getResources().getString(R.string.notification_text_paused))
+                    .addAction(R.drawable.ic_play, getResources().getString(R.string.resume), resumePendingIntent);
+        }
 
-                        .build();
+        Notification notification = builder
+                .addAction(R.drawable.ic_close, getResources().getString(R.string.stop), stopPendingIntent)
+                .build();
         startForeground(2, notification);
     }
 
