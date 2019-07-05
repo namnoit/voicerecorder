@@ -180,7 +180,6 @@ public class RecorderService extends Service {
             MediaMetadataRetriever metadataRetriever = new MediaMetadataRetriever();
             metadataRetriever.setDataSource(dir + "/" + tempFile);
             String duration = metadataRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION);
-
             RecordingsDbHelper dbHelper = new RecordingsDbHelper(getApplicationContext());
             dbHelper.insert(tempFile,fileByteArray,Integer.parseInt(duration),date);
             SharedPreferences.Editor editor = pref.edit();

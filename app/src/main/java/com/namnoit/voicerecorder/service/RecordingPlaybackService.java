@@ -28,7 +28,6 @@ import java.util.Objects;
 public class RecordingPlaybackService extends Service {
     private MediaPlayer mediaPlayer;
     private int currentPosition = 0; // For resume
-    public static final String cacheFile = "/recording.mp3";
     private String cacheFilePath;
     private Handler handler = new Handler();
     private int duration = 0;
@@ -38,6 +37,7 @@ public class RecordingPlaybackService extends Service {
     private Intent broadcastStartPlaying = new Intent(RecordingsFragment.BROADCAST_START_PLAYING);
     private Intent broadcastPaused = new Intent(RecordingsFragment.BROADCAST_PAUSED);
     private static final String CHANNEL_ID = "Voice_Recorder_Playback";
+    public static final String CACHE_FILE_NAME = "/recording.mp3";
     public static final String ACTION_PLAY = "PLAY";
     public static final String ACTION_PAUSE = "PAUSE";
     public static final String ACTION_RESUME = "RESUME";
@@ -54,14 +54,14 @@ public class RecordingPlaybackService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
-        cacheFilePath = getCacheDir().getAbsolutePath() + cacheFile;
+        cacheFilePath = getCacheDir().getAbsolutePath() + CACHE_FILE_NAME;
 
         mediaPlayer = new MediaPlayer();
         mediaPlayer.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
             @Override
             public void onPrepared(MediaPlayer mp) {
                 duration = mediaPlayer.getDuration();
-                broadcastStartPlaying.putExtra(RecordingsFragment.fileName,fileName);
+                broadcastStartPlaying.putExtra(RecordingsFragment.KEY_FILE_NAME,fileName);
                 broadcastStartPlaying.putExtra(RecordingsFragment.KEY_DURATION,duration);
                 mp.start();
                 LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(broadcastStartPlaying);
@@ -69,7 +69,7 @@ public class RecordingPlaybackService extends Service {
                 SharedPreferences pref = getSharedPreferences(MainActivity.PREF_NAME, Context.MODE_PRIVATE);
                 SharedPreferences.Editor editor = pref.edit();
                 editor.putInt(MainActivity.KEY_STATUS,RecordingsFragment.STATUS_PLAYING);
-                editor.putString(RecordingsFragment.fileName,fileName);
+                editor.putString(RecordingsFragment.KEY_FILE_NAME,fileName);
                 editor.putInt(RecordingsFragment.KEY_DURATION,duration);
                 editor.apply();
             }
@@ -84,7 +84,7 @@ public class RecordingPlaybackService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        String fn = intent.getStringExtra(RecordingsFragment.fileName);
+        String fn = intent.getStringExtra(RecordingsFragment.KEY_FILE_NAME);
         if (fn != null) fileName = fn;
         if (Objects.equals(intent.getAction(), ACTION_PLAY)) {
             createNotification(fileName, RecordingsFragment.STATUS_PLAYING);
@@ -110,12 +110,10 @@ public class RecordingPlaybackService extends Service {
                 SharedPreferences pref = getSharedPreferences(MainActivity.PREF_NAME, Context.MODE_PRIVATE);
                 SharedPreferences.Editor editor = pref.edit();
                 editor.putInt(MainActivity.KEY_STATUS,RecordingsFragment.STATUS_PAUSED);
-                editor.putInt(RecordingsFragment.currentPosition,currentPosition);
-//            editor.putInt(RecordingsFragment.KEY_DURATION,duration);
+                editor.putInt(RecordingsFragment.KEY_CURRENT_POSITION,currentPosition);
                 editor.apply();
-                broadcastPaused.putExtra(RecordingsFragment.currentPosition,currentPosition);
+                broadcastPaused.putExtra(RecordingsFragment.KEY_CURRENT_POSITION,currentPosition);
                 LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(broadcastPaused);
-
             }
         }
         if (Objects.equals(intent.getAction(), ACTION_RESUME)) {
@@ -131,11 +129,9 @@ public class RecordingPlaybackService extends Service {
             }
         }
         if (Objects.equals(intent.getAction(), ACTION_SEEK)) {
-            int seekTo = intent.getIntExtra(RecordingsFragment.seekPosition,0);
+            int seekTo = intent.getIntExtra(RecordingsFragment.KEY_SEEK_TO_POSITION,0);
             if (mediaPlayer != null) {
-
                 currentPosition = Math.round((float)seekTo/100*duration);
-
                 mediaPlayer.seekTo(currentPosition);
             }
         }
@@ -146,13 +142,13 @@ public class RecordingPlaybackService extends Service {
     @Override
     public void onDestroy() {
         super.onDestroy();
-        // Delete temporary file
         handler.removeCallbacks(updateSeekBarTask);
         LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(broadcastFinishPlaying);
         SharedPreferences pref = getSharedPreferences(MainActivity.PREF_NAME, Context.MODE_PRIVATE);
         SharedPreferences.Editor editor = pref.edit();
         editor.putInt(MainActivity.KEY_STATUS,RecordingsFragment.STATUS_STOPPED);
         editor.apply();
+        // Delete temporary file
         try {
             File delFile = new File(cacheFilePath);
             delFile.delete();
@@ -182,7 +178,6 @@ public class RecordingPlaybackService extends Service {
             );
             manager.createNotificationChannel(serviceChannel);
         }
-
 
         Intent notificationIntent = new Intent(this, MainActivity.class);
         notificationIntent.setAction(Intent.ACTION_MAIN);
@@ -225,12 +220,11 @@ public class RecordingPlaybackService extends Service {
     private Runnable updateSeekBarTask = new Runnable() {
         public void run() {
             broadcastUpdateTime.putExtra(RecordingsFragment.KEY_DURATION,duration);
-            broadcastUpdateTime.putExtra(RecordingsFragment.fileName,fileName);
-            broadcastUpdateTime.putExtra(RecordingsFragment.currentPosition, mediaPlayer.getCurrentPosition());
+            broadcastUpdateTime.putExtra(RecordingsFragment.KEY_FILE_NAME,fileName);
+            broadcastUpdateTime.putExtra(RecordingsFragment.KEY_CURRENT_POSITION, mediaPlayer.getCurrentPosition());
             LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(broadcastUpdateTime);
             handler.postDelayed(this, 1000); // 1 seconds
         }
     };
-
 
 }

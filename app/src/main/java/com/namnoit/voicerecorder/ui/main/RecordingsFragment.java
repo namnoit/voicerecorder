@@ -53,11 +53,12 @@ public class RecordingsFragment extends Fragment {
     public static final String BROADCAST_FINISH_PLAYING = "PLAY_FINISH";
     public static final String BROADCAST_START_PLAYING = "START_PLAYING";
     public static final String BROADCAST_PAUSED = "PAUSED";
-    public static final String currentPosition = "current_position";
+    public static final String KEY_CURRENT_POSITION = "current_position";
     public static final String KEY_DURATION = "duration";
-    public static final String fileName = "file_name";
-    public static final String seekPosition = "seek";
-    public static final String currentPositionInAdaper = "selected_position";
+    public static final String KEY_FILE_NAME = "file_name";
+    public static final String KEY_SEEK_TO_POSITION = "seek";
+    // To show current item selected in list
+    public static final String KEY_CURRENT_POSITION_ADAPTER = "selected_position";
     private int durationMillis = 0;
     private int curMillis = 0;
     private String recordingName = "";
@@ -70,9 +71,10 @@ public class RecordingsFragment extends Fragment {
                 Recording r = db.getLast();
                 if (r != null) {
                     list.add(0, r);
-//                    recordingsAdapter.notifyItemInserted(0);
+                    recordingsAdapter.notifyItemInserted(0);
                     recordingsAdapter.updateSelectedPosition();
-                    recordingsAdapter.notifyDataSetChanged();
+//                    recordingsAdapter.notifyDataSetChanged();
+                    recordingsAdapter.notifyItemRangeChanged(1,recordingsAdapter.getItemCount());
                     recyclerView.scrollToPosition(0);
                 }
             }
@@ -81,7 +83,7 @@ public class RecordingsFragment extends Fragment {
                 seekBar.setProgress(0);
                 playback.setVisibility(View.VISIBLE);
                 playback.setEnabled(true);
-                recordingName = intent.getStringExtra(fileName);
+                recordingName = intent.getStringExtra(KEY_FILE_NAME);
                 textTitle.setText(recordingName);
                 durationMillis = intent.getIntExtra(KEY_DURATION,0);
                 textDuration.setText(seconds2String(Math.round((float)durationMillis/1000)));
@@ -89,7 +91,7 @@ public class RecordingsFragment extends Fragment {
             }
             if (intent.getAction().equals(BROADCAST_UPDATE_SEEKBAR)) {
                 durationMillis = intent.getIntExtra(KEY_DURATION,0);
-                curMillis = intent.getIntExtra(currentPosition,0);
+                curMillis = intent.getIntExtra(KEY_CURRENT_POSITION,0);
                 seekBar.setProgress(curMillis*100/durationMillis);
                 textCurrentPosition.setText(seconds2String(Math.round((float)curMillis/1000)));
 //                status = STATUS_PLAYING;
@@ -154,7 +156,7 @@ public class RecordingsFragment extends Fragment {
                     textCurrentPosition.setText(seconds2String(Math.round((float)progress/100000*durationMillis)));
                     Intent playbackIntent = new Intent(getContext(), RecordingPlaybackService.class);
                     playbackIntent.setAction(RecordingPlaybackService.ACTION_SEEK);
-                    playbackIntent.putExtra(seekPosition,progress);
+                    playbackIntent.putExtra(KEY_SEEK_TO_POSITION,progress);
                     getContext().startService(playbackIntent);
                 }
             }
@@ -225,8 +227,8 @@ public class RecordingsFragment extends Fragment {
             playback.setVisibility(View.INVISIBLE);
             vto.dispatchOnGlobalLayout();
         }else if (status == STATUS_PAUSED){
-            curMillis = pref.getInt(currentPosition,0);
-            recordingName = pref.getString(fileName,"");
+            curMillis = pref.getInt(KEY_CURRENT_POSITION,0);
+            recordingName = pref.getString(KEY_FILE_NAME,"");
             durationMillis = pref.getInt(KEY_DURATION,0);
             textTitle.setText(recordingName);
             textDuration.setText(seconds2String(Math.round((float)durationMillis/1000)));
@@ -234,7 +236,7 @@ public class RecordingsFragment extends Fragment {
             seekBar.setProgress(curMillis*100/durationMillis);
             playRecordingButton.setImageResource(R.drawable.ic_play);
         } else{
-            textTitle.setText(pref.getString(fileName,""));
+            textTitle.setText(pref.getString(KEY_FILE_NAME,""));
             textDuration.setText(seconds2String(Math.round((float)pref.getInt(KEY_DURATION,0)/1000)));
             playRecordingButton.setImageResource(R.drawable.ic_pause_white);
         }
