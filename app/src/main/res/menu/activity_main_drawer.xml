@@ -6,7 +6,7 @@
     <group android:checkableBehavior="single">
         <item
             android:id="@+id/nav_quality"
-            android:icon="@drawable/ic_link"
+            android:icon="@drawable/ic_music"
             android:title="@string/menu_quality" />
     </group>
 
@@ -15,11 +15,16 @@
             <item
                 android:id="@+id/nav_rate"
                 android:icon="@drawable/ic_playstore"
-                android:title="@string/menu_share" />
+                android:title="@string/menu_rate" />
             <item
-                android:id="@+id/nav_visit"
-                android:icon="@drawable/ic_link"
-                android:title="@string/menu_send" />
+                android:id="@+id/nav_feed_back"
+                android:icon="@drawable/ic_email"
+                android:title="@string/menu_feed_back" />
+            <item
+                android:id="@+id/nav_version"
+                android:icon="@drawable/ic_info"
+                android:checkable="false"
+                android:title="@string/menu_version" />
         </menu>
     </item>
 

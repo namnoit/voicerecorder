@@ -8,6 +8,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.media.MediaMetadataRetriever;
+import android.net.Uri;
 import android.os.Bundle;
 
 import androidx.annotation.NonNull;
@@ -17,6 +18,7 @@ import androidx.core.content.ContextCompat;
 import androidx.core.view.GravityCompat;
 import androidx.appcompat.app.ActionBarDrawerToggle;
 
+import android.util.Log;
 import android.view.MenuItem;
 
 import com.google.android.material.navigation.NavigationView;
@@ -49,7 +51,8 @@ public class MainActivity extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener {
     String[] appPermissions = {
             Manifest.permission.RECORD_AUDIO,
-            Manifest.permission.WRITE_EXTERNAL_STORAGE
+            Manifest.permission.WRITE_EXTERNAL_STORAGE,
+            Manifest.permission.READ_EXTERNAL_STORAGE
     };
     private static final int PERMISSION_REQUEST_CODE = 100;
     public static final String PREF_NAME = "config";
@@ -94,6 +97,8 @@ public class MainActivity extends AppCompatActivity
         setContentView(R.layout.activity_main);
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
+        checkPermissions();
+
         pref = getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
         qualityChosen = pref.getInt(KEY_QUALITY,QUALITY_GOOD);
 
@@ -103,6 +108,7 @@ public class MainActivity extends AppCompatActivity
             FileInputStream fis = null;
             String dir = getFilesDir().getAbsolutePath();
             String tempFile = pref.getString(KEY_FILE_NAME_RECORDING, "");
+
             String date = pref.getString(KEY_DATE, "");
             try {
                 fis = new FileInputStream(dir + "/" + tempFile);
@@ -115,9 +121,10 @@ public class MainActivity extends AppCompatActivity
                     baos.flush();
                 }
                 byte[] fileByteArray = baos.toByteArray();
-
+Log.d("Length", Integer.toString(fileByteArray.length));Log.d("Restart",tempFile);
                 MediaMetadataRetriever metadataRetriever = new MediaMetadataRetriever();
-                metadataRetriever.setDataSource(dir + "/" + tempFile);
+//                metadataRetriever.setDataSource(dir + "/" + tempFile);
+                metadataRetriever.setDataSource(fis.getFD());
                 String duration =
                         metadataRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION);
                 RecordingsDbHelper dbHelper = new RecordingsDbHelper(getApplicationContext());
@@ -126,7 +133,7 @@ public class MainActivity extends AppCompatActivity
                 editor.putInt(MainActivity.KEY_STATUS, RecorderService.STOP);
                 editor.apply();
                 // Delete temporary file
-                File delFile = new File(dir + "/" + tempFile);
+                File delFile = new File(tempFile);
                 delFile.delete();
                 if (delFile.exists()) {
                     delFile.getCanonicalFile().delete();
@@ -144,7 +151,7 @@ public class MainActivity extends AppCompatActivity
             }
         }
 
-        checkPermissions();
+
 
         PagerAdapter sectionsPagerAdapter = new PagerAdapter(getSupportFragmentManager());
         sectionsPagerAdapter.addFragment(new RecordFragment(),getResources().getString(R.string.tab_record));
@@ -165,9 +172,9 @@ public class MainActivity extends AppCompatActivity
 
     private void checkPermissions() {
         List<String> listPermissionNeeded = new ArrayList<>();
-        for (String permision : appPermissions) {
-            if (ContextCompat.checkSelfPermission(this, permision) != PackageManager.PERMISSION_GRANTED)
-                listPermissionNeeded.add(permision);
+        for (String permission : appPermissions) {
+            if (ContextCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED)
+                listPermissionNeeded.add(permission);
         }
         if (!listPermissionNeeded.isEmpty()) {
             ActivityCompat.requestPermissions(this,
@@ -212,9 +219,9 @@ public class MainActivity extends AppCompatActivity
         DrawerLayout drawer = findViewById(R.id.drawer_layout);
         if (id == R.id.nav_quality) {
             drawer.closeDrawer(GravityCompat.START,false);
-            final CharSequence[] items = {"Good (AAC)","Small size (3GP)"};
+            final CharSequence[] items = {getResources().getString(R.string.quality_good),getResources().getString(R.string.quality_small)};
             AlertDialog qualityDialog = new AlertDialog.Builder(MainActivity.this)
-                    .setTitle(getResources().getString(R.string.text_quality_tiltle))
+                    .setTitle(getResources().getString(R.string.text_quality_title))
                     .setSingleChoiceItems(items, qualityChosen, new DialogInterface.OnClickListener() {
                         public void onClick(DialogInterface dialog, int item) {
                             // Your code
@@ -239,7 +246,14 @@ public class MainActivity extends AppCompatActivity
             qualityDialog.show();
 
         } else if (id == R.id.nav_rate) {
-
+            Uri uri = Uri.parse("market://details?id=" + getPackageName());
+            Intent goToMarket = new Intent(Intent.ACTION_VIEW, uri);
+            startActivity(goToMarket);
+        }else if (id == R.id.nav_feed_back) {
+            Intent intent = new Intent(Intent.ACTION_SENDTO);
+            intent.setData(Uri.parse("mailto:"));
+            intent.putExtra(Intent.EXTRA_EMAIL, new String[]{getResources().getString(R.string.my_email)});
+            startActivity(intent);
         } else if (id == R.id.nav_view) {
 
         }

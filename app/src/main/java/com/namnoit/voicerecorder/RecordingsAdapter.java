@@ -86,7 +86,6 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
                 if (isServiceRunning(RecorderService.class)) {
                     Intent stopServiceIntent = new Intent(context, RecorderService.class);
                     context.stopService(stopServiceIntent);
-                    Log.d("stop","service");
                 }
                 try {
                     // create temp file that will hold byte array
@@ -115,6 +114,7 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
                 TextView dialogTitle = new TextView(context);
                 dialogTitle.setText(holder.textName.getText());
                 dialogTitle.setTextSize(22);
+                dialogTitle.setTextColor(context.getResources().getColor(android.R.color.primary_text_light));
                 int padding = 50;
                 dialogTitle.setPadding(padding,padding,padding,padding);
                 dialogTitle.setSingleLine();
@@ -124,8 +124,13 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
                 ListDialogAdapter listAdapter = new ListDialogAdapter(context);
                 lv.setAdapter(listAdapter);
                 lv.setDividerHeight(0);
-                dialogBuilder.setCustomTitle(dialogTitle);
-                dialogBuilder.setView(convertView);
+                dialogBuilder.setCustomTitle(dialogTitle)
+                        .setView(convertView)
+                        .setPositiveButton(R.string.cancel, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                    }
+                });
 
                 final AlertDialog dialog = dialogBuilder.create();
                 lv.setOnItemClickListener(new AdapterView.OnItemClickListener() {
@@ -135,14 +140,30 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
                         switch(which){
                             // Delete
                             case 0:
-                                db.delete(holder.id);
-                                recordingsList.remove(position);
-                                notifyItemRemoved(position);
-                                notifyItemRangeChanged(position, getItemCount());
-                                if (selectedPosition == position)
-                                    selectedPosition = RecyclerView.NO_POSITION;
-                                else if (selectedPosition > position)
-                                    selectedPosition--;
+                                AlertDialog.Builder deleteDialogBuilder = new AlertDialog.Builder(context);
+                                deleteDialogBuilder.setTitle(R.string.delete_title)
+                                        .setMessage(fileName[0] + " "
+                                                + context.getResources().getString(R.string.will_be_deleted))
+                                        .setPositiveButton(R.string.ok, new DialogInterface.OnClickListener() {
+                                            @Override
+                                            public void onClick(DialogInterface dialog, int which) {
+                                                db.delete(holder.id);
+                                                recordingsList.remove(position);
+                                                notifyItemRemoved(position);
+                                                notifyItemRangeChanged(position, getItemCount());
+                                                if (selectedPosition == position)
+                                                    selectedPosition = RecyclerView.NO_POSITION;
+                                                else if (selectedPosition > position)
+                                                    selectedPosition--;
+                                            }
+                                        })
+                                        .setNegativeButton(R.string.cancel, new DialogInterface.OnClickListener() {
+                                            @Override
+                                            public void onClick(DialogInterface dialog, int which) {
+                                            }
+                                        })
+                                        .create().show();
+
                                 break;
                             // Export
                             case 1:
@@ -205,39 +226,46 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
                                 MediaMetadataRetriever meta = new MediaMetadataRetriever();
                                 meta.setDataSource(tempMp3.getAbsolutePath());
 
-                                AlertDialog.Builder detailBuilder = new AlertDialog.Builder(context);
+                                final AlertDialog.Builder detailBuilder = new AlertDialog.Builder(context);
                                 LayoutInflater inflater = LayoutInflater.from(context);
-                                View detailsDialog = inflater.inflate(R.layout.dialog_details, null);
+                                final View detailsDialogLayout = inflater.inflate(R.layout.dialog_details, null);
                                 // File name
-                                TextView textNameDetails = detailsDialog.findViewById(R.id.text_details_title);
+                                TextView textNameDetails = detailsDialogLayout.findViewById(R.id.text_details_title);
                                 textNameDetails.setText(holder.textName.getText());
                                 // Duration
-                                TextView textDurationDetails = detailsDialog.findViewById(R.id.text_details_duration);
+                                TextView textDurationDetails = detailsDialogLayout.findViewById(R.id.text_details_duration);
                                 textDurationDetails.setText(holder.textDuration.getText());
                                 // Size
-                                TextView textSize = detailsDialog.findViewById(R.id.text_details_size);
+                                TextView textSize = detailsDialogLayout.findViewById(R.id.text_details_size);
                                 int fileSize = soundByteArray.length;
                                 String strSize;
                                 if (fileSize < 1024){
-                                    strSize = Integer.toString(fileSize) + " bytes";
+                                    strSize = fileSize + " bytes";
                                 } else if ((fileSize=fileSize/1024) < 1024){
-                                    strSize = Integer.toString(fileSize) + " KB";
+                                    strSize = fileSize + " KB";
                                 } else if ((fileSize=fileSize/1024) < 1024){
-                                    strSize = Integer.toString(fileSize) + " MB";
+                                    strSize = fileSize + " MB";
                                 } else {
-                                    strSize = Integer.toString(fileSize) + " GB";
+                                    strSize = fileSize + " GB";
                                 }
                                 textSize.setText(strSize);
                                 // Time
-                                TextView textTime = detailsDialog.findViewById(R.id.text_details_time);
+                                TextView textTime = detailsDialogLayout.findViewById(R.id.text_details_time);
                                 textTime.setText(holder.textDate.getText());
                                 // Format
-                                TextView textFormat = detailsDialog.findViewById(R.id.text_details_format);
+                                TextView textFormat = detailsDialogLayout.findViewById(R.id.text_details_format);
 //                                textFormat.setText(meta.extractMetadata(MediaMetadataRetriever.METADATA_KEY_BITRATE));
-                                textFormat.setText(fileName[1]);
-                                detailBuilder.setView(detailsDialog).create().show();
-
-
+                                if (fileName[1].equals(RecorderService.AAC)){
+                                    textFormat.setText(context.getResources().getString(R.string.quality_good));
+                                } else
+                                    textFormat.setText(context.getResources().getString(R.string.quality_small));
+                                detailBuilder.setView(detailsDialogLayout)
+                                        .setPositiveButton(R.string.ok, new DialogInterface.OnClickListener() {
+                                    @Override
+                                    public void onClick(DialogInterface dialog, int which) {
+                                    }
+                                });
+                                detailBuilder.create().show();
                         }
                         dialog.cancel();
                     }

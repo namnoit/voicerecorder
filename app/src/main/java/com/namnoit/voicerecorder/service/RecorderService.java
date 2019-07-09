@@ -48,6 +48,8 @@ public class RecorderService extends Service {
     private static final String CHANNEL_ID = "Voice_Recorder";
     public static final String BROADCAST_RECORDING_INSERTED = "RECORDING.INSERTED";
     public static final String BROADCAST_UPDATE_TIME = "RECORDING.UPDATE.TIME";
+    public static final String AAC = "aac";
+    public static final String THREE_GPP = "3gp";
     public static final int STOP = 0;
     public static final int RECORDING = 1;
     private String date;
@@ -116,21 +118,21 @@ public class RecorderService extends Service {
                 recorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
                 recorder.setAudioSamplingRate(48000);
                 recorder.setAudioEncodingBitRate(320000);
-                tempFile += ".aac";
+                tempFile += "." + AAC;
                 break;
             case MainActivity.QUALITY_SMALL:
                 recorder.setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP);
                 recorder.setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB);
                 recorder.setAudioSamplingRate(16000);
                 recorder.setAudioEncodingBitRate(128000);
-                tempFile += ".3gp";
+                tempFile += "." + THREE_GPP;
                 break;
             default:
                 recorder.setOutputFormat(MediaRecorder.OutputFormat.DEFAULT);
                 recorder.setAudioEncoder(MediaRecorder.AudioEncoder.DEFAULT);
                 recorder.setAudioSamplingRate(16000);
                 recorder.setAudioEncodingBitRate(128000);
-                tempFile += ".aac";
+                tempFile += "." + AAC;
                 break;
         }
         recorder.setOutputFile(dir + "/" + tempFile);
@@ -147,6 +149,7 @@ public class RecorderService extends Service {
             SharedPreferences.Editor editor = pref.edit();
             editor.putInt(MainActivity.KEY_STATUS,1);
             editor.putString(MainActivity.KEY_FILE_NAME_RECORDING,tempFile);
+//            editor.putString(MainActivity.KEY_FILE_NAME_RECORDING,dir + "/" + tempFile);
             editor.putString(MainActivity.KEY_DATE,date);
             editor.apply();
         } catch (IllegalStateException e) {
@@ -178,7 +181,7 @@ public class RecorderService extends Service {
             byte[] fileByteArray = baos.toByteArray();
 
             MediaMetadataRetriever metadataRetriever = new MediaMetadataRetriever();
-            metadataRetriever.setDataSource(dir + "/" + tempFile);
+            metadataRetriever.setDataSource(fis.getFD());
             String duration = metadataRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION);
             RecordingsDbHelper dbHelper = new RecordingsDbHelper(getApplicationContext());
             dbHelper.insert(tempFile,fileByteArray,Integer.parseInt(duration),date);
