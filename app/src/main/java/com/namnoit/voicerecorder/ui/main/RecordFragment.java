@@ -5,17 +5,19 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.os.SystemClock;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
-import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
+import com.namnoit.voicerecorder.MainActivity;
 import com.namnoit.voicerecorder.R;
 import com.namnoit.voicerecorder.service.RecorderService;
 import com.namnoit.voicerecorder.service.RecordingPlaybackService;
@@ -27,33 +29,60 @@ public class RecordFragment extends Fragment {
     private FloatingActionButton recordStopButton;
     private TextView textTime;
     private boolean recording = false;
+    public static final String RECORD_STATUS_SAVED = "record_status";
+    public static final int RECORDING_NOT_SAVED = 1;
+    public static final int RECORDING_SAVED = 0;
+    private SharedPreferences pref;
     // Prevent double click
     private long mLastClickTime = 0;
     private BroadcastReceiver receiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            int seconds = intent.getIntExtra("time",0);
-            long s = seconds % 60;
-            long m = (seconds / 60) % 60;
-            long h = (seconds / (60 * 60)) % 24;
-            String dur = String.format("%02d:%02d:%02d",h,m,s);
-            textTime.setText(dur);
+            if (intent.getAction().equals(RecorderService.BROADCAST_FINISH_RECORDING)){
+                recordStopButton.setImageResource(R.drawable.ic_circle);
+                recording = false;
+                textTime.setText("00:00:00");
+
+            } else {
+                int seconds = intent.getIntExtra("time", 0);
+                String dur = String.format("%02d:%02d:%02d", (seconds / (60 * 60)) % 24, (seconds / 60) % 60, seconds % 60);
+                textTime.setText(dur);
+            }
         }
     };
+
+    @Override
+    public void onResume() {
+        LocalBroadcastManager.getInstance(getContext()).registerReceiver(receiver,
+                new IntentFilter(RecorderService.BROADCAST_UPDATE_TIME));
+        LocalBroadcastManager.getInstance(getContext()).registerReceiver(receiver,
+                new IntentFilter(RecorderService.BROADCAST_FINISH_RECORDING));
+
+        if (isServiceRunning(RecorderService.class)){
+            recordStopButton.setImageResource(R.drawable.square);
+            recording = true;
+        } else {
+            recordStopButton.setImageResource(R.drawable.ic_circle);
+            textTime.setText("00:00:00");
+            recording = false;
+        }
+        super.onResume();
+    }
+
+    @Override
+    public void onPause() {
+        LocalBroadcastManager.getInstance(getContext()).unregisterReceiver(receiver);
+        super.onPause();
+    }
 
     @Override
     public View onCreateView(
             @NonNull LayoutInflater inflater, ViewGroup container,
             Bundle savedInstanceState) {
         View root = inflater.inflate(R.layout.fragment_record, container, false);
-        LocalBroadcastManager.getInstance(getContext()).registerReceiver(receiver,
-                new IntentFilter(RecorderService.BROADCAST_UPDATE_TIME));
+        pref = getContext().getSharedPreferences(MainActivity.PREF_NAME, Context.MODE_PRIVATE);
         recordStopButton = root.findViewById(R.id.button_record_stop);
         textTime = root.findViewById(R.id.textTime);
-        if (isServiceRunning(RecorderService.class)){
-            recording = true;
-            recordStopButton.setImageResource(R.drawable.square);
-        }
 
         recordStopButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -64,6 +93,7 @@ public class RecordFragment extends Fragment {
                 mLastClickTime = SystemClock.elapsedRealtime();
                 // Start recording
                 if (!recording) {
+                    // Stop playback if playing recordings
                     if (isServiceRunning(RecordingPlaybackService.class)){
                         Intent stopIntent = new Intent(getContext(),RecordingPlaybackService.class);
                         getActivity().stopService(stopIntent);
@@ -72,15 +102,14 @@ public class RecordFragment extends Fragment {
                     getContext().startService(intent);
                     recordStopButton.setImageResource(R.drawable.square);
                     recording = true;
+                    SharedPreferences.Editor editor = pref.edit();
+                    editor.putInt(RECORD_STATUS_SAVED,RECORDING_NOT_SAVED);
+                    editor.apply();
                 }
                 // Stop recording
                 else{
                     Intent intent = new Intent(getContext(), RecorderService.class);
                     getContext().stopService(intent);
-                    recordStopButton.setImageResource(R.drawable.ic_circle);
-                    recording = false;
-                    Toast.makeText(getContext(),getResources().getText(R.string.toast_recording_saved).toString(),Toast.LENGTH_SHORT).show();
-                    textTime.setText("00:00:00");
                 }
             }
         });

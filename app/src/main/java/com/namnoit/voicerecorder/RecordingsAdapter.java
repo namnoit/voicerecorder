@@ -89,7 +89,7 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
                 }
                 try {
                     // create temp file that will hold byte array
-                    File tempMp3 = new File(holder.textName.getContext().getCacheDir().getAbsolutePath()
+                    File tempMp3 = new File(context.getCacheDir().getAbsolutePath()
                             + RecordingPlaybackService.CACHE_FILE_NAME);
 //                    tempMp3.deleteOnExit();
                     FileOutputStream fos = new FileOutputStream(tempMp3);
@@ -207,11 +207,11 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
                                 break;
                             // Show details
                             case 2:
-                                File tempMp3 = new File(holder.textName.getContext().getCacheDir().getAbsolutePath()
+                                File tempMp3 = new File(context.getCacheDir().getAbsolutePath()
                                         + RecordingPlaybackService.CACHE_FILE_NAME);
                                 tempMp3.deleteOnExit();
                                 FileOutputStream fos;
-                                byte[] soundByteArray = new RecordingsDbHelper(holder.textDate.getContext())
+                                byte[] soundByteArray = new RecordingsDbHelper(context)
                                     .getAudio(holder.id);
                                 try {
                                     fos = new FileOutputStream(tempMp3);
@@ -225,7 +225,6 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
 
                                 MediaMetadataRetriever meta = new MediaMetadataRetriever();
                                 meta.setDataSource(tempMp3.getAbsolutePath());
-
                                 final AlertDialog.Builder detailBuilder = new AlertDialog.Builder(context);
                                 LayoutInflater inflater = LayoutInflater.from(context);
                                 final View detailsDialogLayout = inflater.inflate(R.layout.dialog_details, null);

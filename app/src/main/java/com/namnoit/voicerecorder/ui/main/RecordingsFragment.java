@@ -66,16 +66,17 @@ public class RecordingsFragment extends Fragment {
     private BroadcastReceiver receiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            if (intent.getAction().equals(RecorderService.BROADCAST_RECORDING_INSERTED)) {
-                Log.d("recording","inserted");
+            if (intent.getAction().equals(RecorderService.BROADCAST_FINISH_RECORDING)) {
                 Recording r = db.getLast();
                 if (r != null) {
                     list.add(0, r);
                     recordingsAdapter.notifyItemInserted(0);
                     recordingsAdapter.updateSelectedPosition();
-//                    recordingsAdapter.notifyDataSetChanged();
                     recordingsAdapter.notifyItemRangeChanged(1,recordingsAdapter.getItemCount());
                     recyclerView.scrollToPosition(0);
+                    SharedPreferences.Editor editor = pref.edit();
+                    editor.putInt(RecordFragment.RECORD_STATUS_SAVED,RecordFragment.RECORDING_SAVED);
+                    editor.apply();
                 }
             }
             if (intent.getAction().equals(BROADCAST_START_PLAYING)) {
@@ -94,7 +95,6 @@ public class RecordingsFragment extends Fragment {
                 curMillis = intent.getIntExtra(KEY_CURRENT_POSITION,0);
                 seekBar.setProgress(curMillis*100/durationMillis);
                 textCurrentPosition.setText(seconds2String(Math.round((float)curMillis/1000)));
-//                status = STATUS_PLAYING;
             }
             if (intent.getAction().equals(BROADCAST_FINISH_PLAYING)) {
                 seekBar.setProgress(100);
@@ -120,7 +120,7 @@ public class RecordingsFragment extends Fragment {
     public void onResume() {
         super.onResume();
         LocalBroadcastManager.getInstance(getContext()).registerReceiver(receiver,
-                new IntentFilter(RecorderService.BROADCAST_RECORDING_INSERTED));
+                new IntentFilter(RecorderService.BROADCAST_FINISH_RECORDING));
         LocalBroadcastManager.getInstance(getContext()).registerReceiver(receiver,
                 new IntentFilter(RecordingsFragment.BROADCAST_UPDATE_SEEKBAR));
         LocalBroadcastManager.getInstance(getContext()).registerReceiver(receiver,
@@ -129,23 +129,59 @@ public class RecordingsFragment extends Fragment {
                 new IntentFilter(RecordingsFragment.BROADCAST_START_PLAYING));
         LocalBroadcastManager.getInstance(getContext()).registerReceiver(receiver,
                 new IntentFilter(RecordingsFragment.BROADCAST_PAUSED));
+        if (!isServiceRunning(RecorderService.class) &&
+                pref.getInt(
+                        RecordFragment.RECORD_STATUS_SAVED,
+                        RecordFragment.RECORDING_SAVED) == RecordFragment.RECORDING_NOT_SAVED) {
+            Recording r = db.getLast();
+            if (r != null) {
+                list.add(0, r);
+                recordingsAdapter.notifyItemInserted(0);
+                recordingsAdapter.updateSelectedPosition();
+                recordingsAdapter.notifyItemRangeChanged(1,recordingsAdapter.getItemCount());
+                recyclerView.scrollToPosition(0);
+                recordingsAdapter.notifyItemRemoved(0);
+                SharedPreferences.Editor editor = pref.edit();
+                editor.putInt(RecordFragment.RECORD_STATUS_SAVED,RecordFragment.RECORDING_SAVED);
+                editor.apply();
+            }
+        }
+
+        status = pref.getInt(MainActivity.KEY_STATUS,STATUS_STOPPED);
+        if (!isServiceRunning(RecordingPlaybackService.class)){
+            status = STATUS_STOPPED;
+            playback.setEnabled(false);
+            playback.setVisibility(View.INVISIBLE);
+            vto.dispatchOnGlobalLayout();
+        }else if (status == STATUS_PAUSED){
+            curMillis = pref.getInt(KEY_CURRENT_POSITION,0);
+            recordingName = pref.getString(KEY_FILE_NAME,"");
+            durationMillis = pref.getInt(KEY_DURATION,0);
+            textTitle.setText(recordingName);
+            textDuration.setText(seconds2String(Math.round((float)durationMillis/1000)));
+            textCurrentPosition.setText(seconds2String(Math.round((float)curMillis/1000)));
+            seekBar.setProgress(curMillis*100/durationMillis);
+            playRecordingButton.setImageResource(R.drawable.ic_play);
+        } else{
+            textTitle.setText(pref.getString(KEY_FILE_NAME,""));
+            textDuration.setText(seconds2String(Math.round((float)pref.getInt(KEY_DURATION,0)/1000)));
+            playRecordingButton.setImageResource(R.drawable.ic_pause_white);
+        }
+
     }
 
     @Override
     public void onPause() {
         LocalBroadcastManager.getInstance(getContext()).unregisterReceiver(receiver);
         super.onPause();
-
     }
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
-
         View view = inflater.inflate(R.layout.fragment_recordings, container, false);
 
         pref = getContext().getSharedPreferences(MainActivity.PREF_NAME, Context.MODE_PRIVATE);
-
         db = new RecordingsDbHelper(getContext());
         list = db.getAll();
         seekBar = view.findViewById(R.id.seekBar);
@@ -220,26 +256,6 @@ public class RecordingsFragment extends Fragment {
                 else recyclerView.setPadding(0, 0, 0, playback.getHeight());
             }
         });
-        status = pref.getInt(MainActivity.KEY_STATUS,STATUS_STOPPED);
-        if (!isServiceRunning(RecordingPlaybackService.class)){
-            status = STATUS_STOPPED;
-            playback.setEnabled(false);
-            playback.setVisibility(View.INVISIBLE);
-            vto.dispatchOnGlobalLayout();
-        }else if (status == STATUS_PAUSED){
-            curMillis = pref.getInt(KEY_CURRENT_POSITION,0);
-            recordingName = pref.getString(KEY_FILE_NAME,"");
-            durationMillis = pref.getInt(KEY_DURATION,0);
-            textTitle.setText(recordingName);
-            textDuration.setText(seconds2String(Math.round((float)durationMillis/1000)));
-            textCurrentPosition.setText(seconds2String(Math.round((float)curMillis/1000)));
-            seekBar.setProgress(curMillis*100/durationMillis);
-            playRecordingButton.setImageResource(R.drawable.ic_play);
-        } else{
-            textTitle.setText(pref.getString(KEY_FILE_NAME,""));
-            textDuration.setText(seconds2String(Math.round((float)pref.getInt(KEY_DURATION,0)/1000)));
-            playRecordingButton.setImageResource(R.drawable.ic_pause_white);
-        }
         return view;
     }
 

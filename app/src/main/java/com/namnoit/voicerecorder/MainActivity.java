@@ -8,6 +8,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.media.MediaMetadataRetriever;
+import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.Bundle;
 
@@ -49,7 +50,7 @@ import java.util.List;
 
 public class MainActivity extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener {
-    String[] appPermissions = {
+    private String[] appPermissions = {
             Manifest.permission.RECORD_AUDIO,
             Manifest.permission.WRITE_EXTERNAL_STORAGE,
             Manifest.permission.READ_EXTERNAL_STORAGE
@@ -58,8 +59,6 @@ public class MainActivity extends AppCompatActivity
     public static final String PREF_NAME = "config";
     public static final String KEY_QUALITY = "quality";
     public static final String KEY_STATUS = "status";
-    public static final String KEY_FILE_NAME_RECORDING = "file_name_recording";
-    public static final String KEY_DATE = "date";
     public static final int QUALITY_GOOD = 0;
     public static final int QUALITY_SMALL = 1;
     private SharedPreferences pref;
@@ -101,57 +100,6 @@ public class MainActivity extends AppCompatActivity
 
         pref = getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
         qualityChosen = pref.getInt(KEY_QUALITY,QUALITY_GOOD);
-
-        // Recording corrupt cause by shutdown
-        if (pref.getInt(KEY_STATUS,0) != RecorderService.STOP
-                && !isServiceRunning(RecorderService.class)) {
-            FileInputStream fis = null;
-            String dir = getFilesDir().getAbsolutePath();
-            String tempFile = pref.getString(KEY_FILE_NAME_RECORDING, "");
-
-            String date = pref.getString(KEY_DATE, "");
-            try {
-                fis = new FileInputStream(dir + "/" + tempFile);
-                ByteArrayOutputStream baos = new ByteArrayOutputStream();
-
-                byte[] buffer = new byte[1024];
-                int read;
-                while ((read = fis.read(buffer)) != -1) {
-                    baos.write(buffer, 0, read);
-                    baos.flush();
-                }
-                byte[] fileByteArray = baos.toByteArray();
-Log.d("Length", Integer.toString(fileByteArray.length));Log.d("Restart",tempFile);
-                MediaMetadataRetriever metadataRetriever = new MediaMetadataRetriever();
-//                metadataRetriever.setDataSource(dir + "/" + tempFile);
-                metadataRetriever.setDataSource(fis.getFD());
-                String duration =
-                        metadataRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION);
-                RecordingsDbHelper dbHelper = new RecordingsDbHelper(getApplicationContext());
-                dbHelper.insert(tempFile, fileByteArray, Integer.parseInt(duration), date);
-                SharedPreferences.Editor editor = pref.edit();
-                editor.putInt(MainActivity.KEY_STATUS, RecorderService.STOP);
-                editor.apply();
-                // Delete temporary file
-                File delFile = new File(tempFile);
-                delFile.delete();
-                if (delFile.exists()) {
-                    delFile.getCanonicalFile().delete();
-                    if (delFile.exists()) {
-                        getApplicationContext().deleteFile(delFile.getName());
-                    }
-                }
-                // Notify to update list
-                Intent broadcast = new Intent(RecorderService.BROADCAST_RECORDING_INSERTED);
-                LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(broadcast);
-            } catch (FileNotFoundException e) {
-                e.printStackTrace();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-
-
 
         PagerAdapter sectionsPagerAdapter = new PagerAdapter(getSupportFragmentManager());
         sectionsPagerAdapter.addFragment(new RecordFragment(),getResources().getString(R.string.tab_record));
