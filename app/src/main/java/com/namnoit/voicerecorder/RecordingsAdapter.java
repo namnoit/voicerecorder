@@ -6,7 +6,9 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.media.MediaMetadataRetriever;
+import android.net.Uri;
 import android.os.Environment;
+import android.os.StrictMode;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -91,7 +93,7 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
                     // create temp file that will hold byte array
                     File tempMp3 = new File(context.getCacheDir().getAbsolutePath()
                             + RecordingPlaybackService.CACHE_FILE_NAME);
-//                    tempMp3.deleteOnExit();
+                    tempMp3.deleteOnExit();
                     FileOutputStream fos = new FileOutputStream(tempMp3);
                     byte[] soundByteArray = new RecordingsDbHelper(context)
                             .getAudio(holder.id);
@@ -111,20 +113,15 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
             @Override
             public void onClick(View v) {
                 final AlertDialog.Builder dialogBuilder = new AlertDialog.Builder(context);
-                TextView dialogTitle = new TextView(context);
-                dialogTitle.setText(holder.textName.getText());
-                dialogTitle.setTextSize(22);
-                dialogTitle.setTextColor(context.getResources().getColor(android.R.color.primary_text_light));
-                int padding = 50;
-                dialogTitle.setPadding(padding,padding,padding,padding);
-                dialogTitle.setSingleLine();
+
                 LayoutInflater inflater = LayoutInflater.from(context);
                 View convertView = inflater.inflate(R.layout.dialog_menu, null);
                 ListView lv = convertView.findViewById(R.id.listView);
                 ListDialogAdapter listAdapter = new ListDialogAdapter(context);
                 lv.setAdapter(listAdapter);
                 lv.setDividerHeight(0);
-                dialogBuilder.setCustomTitle(dialogTitle)
+                dialogBuilder.setTitle(holder.textName.getText())
+//                        .setCustomTitle(dialogTitle)
                         .setView(convertView)
                         .setPositiveButton(R.string.cancel, new DialogInterface.OnClickListener() {
                     @Override
@@ -138,32 +135,36 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
                     public void onItemClick(AdapterView<?> parent, View view, int which, long id) {
                         final String[] fileName = holder.textName.getText().toString().split("\\.");
                         switch(which){
-                            // Delete
+                            // Share
                             case 0:
-                                AlertDialog.Builder deleteDialogBuilder = new AlertDialog.Builder(context);
-                                deleteDialogBuilder.setTitle(R.string.delete_title)
-                                        .setMessage(fileName[0] + " "
-                                                + context.getResources().getString(R.string.will_be_deleted))
-                                        .setPositiveButton(R.string.ok, new DialogInterface.OnClickListener() {
-                                            @Override
-                                            public void onClick(DialogInterface dialog, int which) {
-                                                db.delete(holder.id);
-                                                recordingsList.remove(position);
-                                                notifyItemRemoved(position);
-                                                notifyItemRangeChanged(position, getItemCount());
-                                                if (selectedPosition == position)
-                                                    selectedPosition = RecyclerView.NO_POSITION;
-                                                else if (selectedPosition > position)
-                                                    selectedPosition--;
-                                            }
-                                        })
-                                        .setNegativeButton(R.string.cancel, new DialogInterface.OnClickListener() {
-                                            @Override
-                                            public void onClick(DialogInterface dialog, int which) {
-                                            }
-                                        })
-                                        .create().show();
-
+                                File folder = new File(
+                                        Environment.getExternalStorageDirectory().getAbsolutePath(),
+                                        APPLICATION_FOLDER);
+                                if (!folder.exists())
+                                    folder.mkdirs();
+                                File recording = new File(
+                                        Environment.getExternalStorageDirectory().getAbsolutePath()+"/"+APPLICATION_FOLDER,
+                                        holder.textName.getText().toString());
+                                FileOutputStream outputStream;
+                                byte[] recordingByteArray = new RecordingsDbHelper(context)
+                                        .getAudio(holder.id);
+                                try {
+                                    outputStream = new FileOutputStream(recording);
+                                    outputStream.write(recordingByteArray);
+                                    outputStream.close();
+                                } catch (FileNotFoundException e) {
+                                    e.printStackTrace();
+                                } catch (IOException e) {
+                                    e.printStackTrace();
+                                }
+                                StrictMode.VmPolicy.Builder builder = new StrictMode.VmPolicy.Builder();
+                                StrictMode.setVmPolicy(builder.build());
+                                Uri uri = Uri.fromFile(recording);
+                                Intent share = new Intent(Intent.ACTION_SEND);
+                                share.putExtra(Intent.EXTRA_STREAM, uri);
+                                share.setType("audio/*");
+                                context.startActivity(
+                                        Intent.createChooser(share, context.getResources().getString(R.string.menu_share)));
                                 break;
                             // Export
                             case 1:
@@ -195,7 +196,6 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
                                                 } catch (IOException e) {
                                                     e.printStackTrace();
                                                 }
-
                                             }
                                         })
                                         .setNegativeButton(R.string.cancel, new DialogInterface.OnClickListener() {
@@ -265,6 +265,34 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
                                     }
                                 });
                                 detailBuilder.create().show();
+                                break;
+                            // Delete
+                            case 3:
+                                AlertDialog.Builder deleteDialogBuilder = new AlertDialog.Builder(context);
+                                deleteDialogBuilder.setTitle(R.string.delete_title)
+                                        .setMessage(fileName[0] + " "
+                                                + context.getResources().getString(R.string.will_be_deleted))
+                                        .setPositiveButton(R.string.ok, new DialogInterface.OnClickListener() {
+                                            @Override
+                                            public void onClick(DialogInterface dialog, int which) {
+                                                db.delete(holder.id);
+                                                recordingsList.remove(position);
+                                                notifyItemRemoved(position);
+                                                notifyItemRangeChanged(position, getItemCount());
+                                                if (selectedPosition == position)
+                                                    selectedPosition = RecyclerView.NO_POSITION;
+                                                else if (selectedPosition > position)
+                                                    selectedPosition--;
+                                            }
+                                        })
+                                        .setNegativeButton(R.string.cancel, new DialogInterface.OnClickListener() {
+                                            @Override
+                                            public void onClick(DialogInterface dialog, int which) {
+                                            }
+                                        })
+                                        .create().show();
+
+                                break;
                         }
                         dialog.cancel();
                     }

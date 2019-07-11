@@ -8,6 +8,7 @@ import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.os.Build;
 import android.os.Handler;
@@ -89,6 +90,7 @@ public class RecordingPlaybackService extends Service {
         if (Objects.equals(intent.getAction(), ACTION_PLAY)) {
             createNotification(fileName, RecordingsFragment.STATUS_PLAYING);
             mediaPlayer.reset();
+            mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
             try {
                 mediaPlayer.setDataSource(cacheFilePath);
                 mediaPlayer.prepareAsync();
@@ -192,7 +194,7 @@ public class RecordingPlaybackService extends Service {
 
         NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setContentTitle(fileName)
-                .setSmallIcon(R.drawable.ic_launcher_foreground)
+                .setSmallIcon(R.drawable.ic_play)
                 .setContentIntent(pendingIntent)
                 .setOngoing(true);
         if (status == RecordingsFragment.STATUS_PLAYING) {

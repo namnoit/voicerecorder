@@ -111,9 +111,9 @@ public class RecorderService extends Service {
                     new NotificationCompat.Builder(this, CHANNEL_ID)
                             .setContentTitle(getText(R.string.notification_title_recording))
                             .setContentText(getText(R.string.notification_text_recording))
-                            .setSmallIcon(R.drawable.ic_launcher_foreground)
+                            .setSmallIcon(R.drawable.ic_record)
                             .setContentIntent(pendingIntent)
-                            .addAction(R.drawable.ic_launcher_foreground, getResources().getString(R.string.stop), stopPendingIntent)
+                            .addAction(R.drawable.ic_stop, getResources().getString(R.string.stop), stopPendingIntent)
                             .build();
 
             registerReceiver(receiver, shutdownFilter);

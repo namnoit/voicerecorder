@@ -34,9 +34,10 @@
                 android:layout_height="wrap_content"
                 android:layout_alignTop="@id/image_record"
                 android:layout_marginEnd="10dp"
+                android:layout_toStartOf="@id/buttonMore"
                 android:layout_toEndOf="@id/image_record"
                 android:lines="1"
-                android:textSize="19sp"
+                android:textSize="18sp"
                 android:textStyle="bold" />
 
             <TextView
@@ -44,9 +45,10 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_alignBottom="@id/item_recording_duration"
+                android:layout_marginStart="10dp"
+                android:layout_toStartOf="@id/buttonMore"
                 android:layout_toEndOf="@id/item_recording_duration"
-
-                android:layout_marginStart="10dp" />
+                android:maxLines="1" />
 
             <ImageView
                 android:id="@+id/image_record"

@@ -86,20 +86,22 @@ public class RecordingsDbHelper extends SQLiteOpenHelper {
         values.put(RecordingsContract.RecordingsEntry.COLUMN_DURATION, duration);
         values.put(RecordingsContract.RecordingsEntry.COLUMN_DATE, date);
         db.insert(RecordingsContract.RecordingsEntry.TABLE_NAME,null,values);
-        Log.d("db","added" + name);
     }
 
     public byte[] getAudio(int id){
         SQLiteDatabase db = this.getReadableDatabase();
         Cursor cursor = db.query(RecordingsContract.RecordingsEntry.TABLE_NAME,
                 new String[]{RecordingsContract.RecordingsEntry.COLUMN_DATA},
+//                new String[]{RecordingsContract.RecordingsEntry.COLUMN_NAME,RecordingsContract.RecordingsEntry.COLUMN_NAME},
                 RecordingsContract.RecordingsEntry.COLUMN_ID + "=?",
                 new String[]{Integer.toString(id)},
                 null,
                 null,
                 null);
+
         if (cursor != null) {
             cursor.moveToFirst();
+//            Log.d("name",cursor.getString(cursor.getColumnIndex(RecordingsContract.RecordingsEntry.COLUMN_NAME)));
             byte[] audio = cursor.getBlob(cursor.getColumnIndex(RecordingsContract.RecordingsEntry.COLUMN_DATA));
             cursor.close();
             return audio;
