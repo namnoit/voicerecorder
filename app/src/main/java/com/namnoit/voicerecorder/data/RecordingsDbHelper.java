@@ -6,25 +6,25 @@ import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.util.Log;
-
 import androidx.annotation.Nullable;
 
+import com.namnoit.voicerecorder.MainActivity;
+
+import java.io.File;
 import java.util.ArrayList;
-import java.util.List;
 
 public class RecordingsDbHelper extends SQLiteOpenHelper {
     public static final String DATABASE_NAME = "recordings.db";
     public static int DATABASE_VERSION = 1;
     private static final String TEXT_TYPE = " TEXT";
     private static final String INT_TYPE = " INTEGER";
-    private static final String BLOB_TYPE = " BLOB";
 
     private static final String COMMA_SEP = ",";
     private static final String SQL_CREATE_ENTRIES = "CREATE TABLE " +
             RecordingsContract.RecordingsEntry.TABLE_NAME + " (" +
             RecordingsContract.RecordingsEntry.COLUMN_ID + " INTEGER PRIMARY KEY AUTOINCREMENT DEFAULT 0," +
             RecordingsContract.RecordingsEntry.COLUMN_NAME + TEXT_TYPE + COMMA_SEP +
-            RecordingsContract.RecordingsEntry.COLUMN_DATA + BLOB_TYPE + COMMA_SEP +
+            RecordingsContract.RecordingsEntry.COLUMN_SIZE + INT_TYPE + COMMA_SEP +
             RecordingsContract.RecordingsEntry.COLUMN_DATE + TEXT_TYPE + COMMA_SEP +
             RecordingsContract.RecordingsEntry.COLUMN_DURATION + INT_TYPE + ")";
     private static final String SQL_DELETE_ENTRIES = "DROP TABLE IF EXISTS " +
@@ -55,6 +55,7 @@ public class RecordingsDbHelper extends SQLiteOpenHelper {
                 new String[]{
                         RecordingsContract.RecordingsEntry.COLUMN_ID,
                         RecordingsContract.RecordingsEntry.COLUMN_NAME,
+                        RecordingsContract.RecordingsEntry.COLUMN_SIZE,
                         RecordingsContract.RecordingsEntry.COLUMN_DURATION,
                         RecordingsContract.RecordingsEntry.COLUMN_DATE,
                 },
@@ -68,6 +69,7 @@ public class RecordingsDbHelper extends SQLiteOpenHelper {
                 Recording recording = new Recording(
                         cursor.getInt(cursor.getColumnIndex(RecordingsContract.RecordingsEntry.COLUMN_ID)),
                         cursor.getString(cursor.getColumnIndex(RecordingsContract.RecordingsEntry.COLUMN_NAME)),
+                        cursor.getLong(cursor.getColumnIndex(RecordingsContract.RecordingsEntry.COLUMN_SIZE)),
                         cursor.getInt(cursor.getColumnIndex(RecordingsContract.RecordingsEntry.COLUMN_DURATION)),
                         cursor.getString(cursor.getColumnIndex(RecordingsContract.RecordingsEntry.COLUMN_DATE)));
                 recordings.add(recording);
@@ -78,35 +80,14 @@ public class RecordingsDbHelper extends SQLiteOpenHelper {
         return recordings;
     }
 
-    public void insert(String name, byte[] recording, int duration, String date){
+    public void insert(String name, long size, int duration, String date){
         SQLiteDatabase db = this.getReadableDatabase();
         ContentValues values = new ContentValues();
         values.put(RecordingsContract.RecordingsEntry.COLUMN_NAME, name);
-        values.put(RecordingsContract.RecordingsEntry.COLUMN_DATA, recording);
+        values.put(RecordingsContract.RecordingsEntry.COLUMN_SIZE, size);
         values.put(RecordingsContract.RecordingsEntry.COLUMN_DURATION, duration);
         values.put(RecordingsContract.RecordingsEntry.COLUMN_DATE, date);
         db.insert(RecordingsContract.RecordingsEntry.TABLE_NAME,null,values);
-    }
-
-    public byte[] getAudio(int id){
-        SQLiteDatabase db = this.getReadableDatabase();
-        Cursor cursor = db.query(RecordingsContract.RecordingsEntry.TABLE_NAME,
-                new String[]{RecordingsContract.RecordingsEntry.COLUMN_DATA},
-//                new String[]{RecordingsContract.RecordingsEntry.COLUMN_NAME,RecordingsContract.RecordingsEntry.COLUMN_NAME},
-                RecordingsContract.RecordingsEntry.COLUMN_ID + "=?",
-                new String[]{Integer.toString(id)},
-                null,
-                null,
-                null);
-
-        if (cursor != null) {
-            cursor.moveToFirst();
-//            Log.d("name",cursor.getString(cursor.getColumnIndex(RecordingsContract.RecordingsEntry.COLUMN_NAME)));
-            byte[] audio = cursor.getBlob(cursor.getColumnIndex(RecordingsContract.RecordingsEntry.COLUMN_DATA));
-            cursor.close();
-            return audio;
-        }
-        else return null;
     }
 
     public Recording getLast(){
@@ -115,6 +96,7 @@ public class RecordingsDbHelper extends SQLiteOpenHelper {
                 new String[]{
                         RecordingsContract.RecordingsEntry.COLUMN_ID,
                         RecordingsContract.RecordingsEntry.COLUMN_NAME,
+                        RecordingsContract.RecordingsEntry.COLUMN_SIZE,
                         RecordingsContract.RecordingsEntry.COLUMN_DURATION,
                         RecordingsContract.RecordingsEntry.COLUMN_DATE,
                 },
@@ -128,6 +110,7 @@ public class RecordingsDbHelper extends SQLiteOpenHelper {
             recording = new Recording(
                     cursor.getInt(cursor.getColumnIndex(RecordingsContract.RecordingsEntry.COLUMN_ID)),
                     cursor.getString(cursor.getColumnIndex(RecordingsContract.RecordingsEntry.COLUMN_NAME)),
+                    cursor.getLong(cursor.getColumnIndex(RecordingsContract.RecordingsEntry.COLUMN_SIZE)),
                     cursor.getInt(cursor.getColumnIndex(RecordingsContract.RecordingsEntry.COLUMN_DURATION)),
                     cursor.getString(cursor.getColumnIndex(RecordingsContract.RecordingsEntry.COLUMN_DATE)));
         }
@@ -141,6 +124,17 @@ public class RecordingsDbHelper extends SQLiteOpenHelper {
         db.delete(RecordingsContract.RecordingsEntry.TABLE_NAME,
                 RecordingsContract.RecordingsEntry.COLUMN_ID + "=?",
                 new String[]{Integer.toString(id)});
+        db.close();
+    }
+
+    public void updateName(int id, String name){
+        SQLiteDatabase db = this.getWritableDatabase();
+        ContentValues values = new ContentValues();
+        values.put(RecordingsContract.RecordingsEntry.COLUMN_NAME, name);
+        db.update(RecordingsContract.RecordingsEntry.TABLE_NAME,
+                values,
+                RecordingsContract.RecordingsEntry.COLUMN_ID+ " = ?",
+                new String[] {Integer.toString(id)});
         db.close();
     }
 }

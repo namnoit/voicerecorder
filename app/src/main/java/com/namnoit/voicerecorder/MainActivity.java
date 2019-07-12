@@ -19,6 +19,7 @@ import androidx.core.content.ContextCompat;
 import androidx.core.view.GravityCompat;
 import androidx.appcompat.app.ActionBarDrawerToggle;
 
+import android.os.Environment;
 import android.util.Log;
 import android.view.MenuItem;
 
@@ -61,6 +62,9 @@ public class MainActivity extends AppCompatActivity
     public static final String KEY_STATUS = "status";
     public static final int QUALITY_GOOD = 0;
     public static final int QUALITY_SMALL = 1;
+    private static final String DIR = Environment.getExternalStorageDirectory().getAbsolutePath();
+    private static final String APP_FOLDER = "Ez Voice Recorder";
+    public static final String APP_DIR = DIR + File.separator + APP_FOLDER;
     private SharedPreferences pref;
     private int qualityChosen;
 
@@ -97,6 +101,10 @@ public class MainActivity extends AppCompatActivity
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
         checkPermissions();
+
+        // Create application folder
+        File folder = new File(APP_DIR);
+        if (!folder.exists()) folder.mkdir();
 
         pref = getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
         qualityChosen = pref.getInt(KEY_QUALITY,QUALITY_GOOD);

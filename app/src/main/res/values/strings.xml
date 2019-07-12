@@ -30,7 +30,7 @@
     <string name="pause">Pause</string>
     <string name="stop">Stop</string>
     <string name="delete">Delete</string>
-    <string name="export">Export to file</string>
+    <string name="rename">Rename</string>
     <string name="file_name">File name</string>
     <string name="cancel">Cancel</string>
     <string name="details">Details</string>
@@ -42,5 +42,9 @@
     <string name="menu_version">Version 1.0.0</string>
     <string name="menu_feed_back">Send your feedback</string>
     <string name="my_email">phuongnamtruong.it@gmail.com</string>
+    <string name="rename_success">Rename successfully</string>
+    <string name="rename_failed">Rename failed</string>
+    <string name="recording_not_found">Recording not found</string>
+    <string name="recording_not_found_message">File was deleted or modified externally</string>
 </resources>
 

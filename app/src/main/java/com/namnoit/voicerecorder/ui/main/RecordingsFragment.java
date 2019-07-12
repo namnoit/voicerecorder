@@ -91,7 +91,10 @@ public class RecordingsFragment extends Fragment {
                 playRecordingButton.setImageResource(R.drawable.ic_pause_white);
             }
             if (intent.getAction().equals(BROADCAST_UPDATE_SEEKBAR)) {
-                durationMillis = intent.getIntExtra(KEY_DURATION,0);
+                if (status != STATUS_PLAYING){
+                    status = STATUS_PLAYING;
+                    playRecordingButton.setImageResource(R.drawable.ic_pause_white);
+                }
                 curMillis = intent.getIntExtra(KEY_CURRENT_POSITION,0);
                 seekBar.setProgress(curMillis*100/durationMillis);
                 textCurrentPosition.setText(seconds2String(Math.round((float)curMillis/1000)));
@@ -163,6 +166,7 @@ public class RecordingsFragment extends Fragment {
             seekBar.setProgress(curMillis*100/durationMillis);
             playRecordingButton.setImageResource(R.drawable.ic_play);
         } else{
+            durationMillis = pref.getInt(KEY_DURATION,0);
             textTitle.setText(pref.getString(KEY_FILE_NAME,""));
             textDuration.setText(seconds2String(Math.round((float)pref.getInt(KEY_DURATION,0)/1000)));
             playRecordingButton.setImageResource(R.drawable.ic_pause_white);

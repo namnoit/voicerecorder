@@ -23,7 +23,7 @@ public class ListDialogAdapter extends BaseAdapter {
         context = c;
         list = new ArrayList<>();
         list.add(new DialogMenuItem(R.drawable.ic_share,context.getResources().getString(R.string.menu_share)));
-        list.add(new DialogMenuItem(R.drawable.ic_archive,context.getResources().getString(R.string.export)));
+        list.add(new DialogMenuItem(R.drawable.ic_edit,context.getResources().getString(R.string.rename)));
         list.add(new DialogMenuItem(R.drawable.ic_info,context.getResources().getString(R.string.details)));
         list.add(new DialogMenuItem(R.drawable.ic_delete,context.getResources().getString(R.string.delete)));
     }

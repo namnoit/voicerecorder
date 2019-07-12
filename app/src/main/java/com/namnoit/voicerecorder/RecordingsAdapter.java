@@ -19,6 +19,8 @@ import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.TextView;
+import android.widget.Toast;
+
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.recyclerview.widget.RecyclerView;
@@ -31,7 +33,14 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
+import java.util.Locale;
+import java.util.TimeZone;
 
 
 public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.ViewHolder>{
@@ -40,7 +49,7 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
     private Context context;
     private SharedPreferences pref;
     private RecordingsDbHelper db;
-    private static final String APPLICATION_FOLDER = "Voice Recorder";
+
 
     public RecordingsAdapter(ArrayList<Recording> recordings, Context c){
         recordingsList = recordings;
@@ -67,45 +76,81 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
         long s = seconds % 60;
         long m = (seconds / 60) % 60;
         long h = (seconds / (60 * 60)) % 24;
-        String dur = String.format("%02d:%02d:%02d",h,m,s);
+        final String dur = String.format("%02d:%02d:%02d",h,m,s);
         holder.textDuration.setText(dur);
         holder.textDate.setText(recordingsList.get(position).getDate());
         holder.id = recordingsList.get(position).getID();
+        holder.size = recordingsList.get(position).getSize();
         if (position == selectedPosition) holder.icon.setImageResource(R.drawable.ic_play_red);
         else holder.icon.setImageResource(R.drawable.ic_record);
 
         holder.itemView.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                notifyItemChanged(selectedPosition);
-                selectedPosition = position;
-//                holder.itemView.setSelected(true);
-                notifyItemChanged(selectedPosition);
-//                notifyDataSetChanged();
-                SharedPreferences.Editor editor = pref.edit();
-                editor.putInt(RecordingsFragment.KEY_CURRENT_POSITION_ADAPTER,position);
-                editor.apply();
-                if (isServiceRunning(RecorderService.class)) {
-                    Intent stopServiceIntent = new Intent(context, RecorderService.class);
-                    context.stopService(stopServiceIntent);
-                }
-                try {
-                    // create temp file that will hold byte array
-                    File tempMp3 = new File(context.getCacheDir().getAbsolutePath()
-                            + RecordingPlaybackService.CACHE_FILE_NAME);
-                    tempMp3.deleteOnExit();
-                    FileOutputStream fos = new FileOutputStream(tempMp3);
-                    byte[] soundByteArray = new RecordingsDbHelper(context)
-                            .getAudio(holder.id);
-                    fos.write(soundByteArray);
-                    fos.close();
+                // Check if file exist
+                boolean shouldDelete = false;
+                File file = new File(MainActivity.APP_DIR + File.separator + holder.textName.getText());
+                if (file.exists()){
+                    MediaMetadataRetriever retriever = new MediaMetadataRetriever();
+                    retriever.setDataSource(MainActivity.APP_DIR + File.separator + holder.textName.getText());
+                    String duration = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION);
+                    String dateNoFormat = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DATE);
+                    String formattedDate = null;
+                    try {
+                        if (dateNoFormat != null) {
+                            SimpleDateFormat readDateFormat = new SimpleDateFormat("yyyyMMdd'T'HHmmss.SSS'Z'", Locale.getDefault());
+                            readDateFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
+                            Date inputDate = readDateFormat.parse(dateNoFormat);
+                            SimpleDateFormat dateFormat = new SimpleDateFormat("MM/dd/yyyy HH:mm:ss", Locale.getDefault());
+                            formattedDate = dateFormat.format(inputDate);
+                        }
+                    } catch (ParseException e) {
+                        e.printStackTrace();
+                    }
 
+                    if (Integer.parseInt(duration) != recordingsList.get(position).getDuration() ||
+                    formattedDate != null && !formattedDate.equals(holder.textDate.getText().toString()))
+                        shouldDelete = true;
+                } else shouldDelete = true;
+                if (shouldDelete){
+                    final AlertDialog dialog = new AlertDialog.Builder(context)
+                            .setTitle(R.string.recording_not_found)
+                            .setMessage(R.string.recording_not_found_message)
+                            .setPositiveButton(R.string.ok, new DialogInterface.OnClickListener() {
+                                @Override
+                                public void onClick(DialogInterface dialog, int which) {
+                                    dialog.cancel();
+                                }
+                            })
+                            .setOnCancelListener(new DialogInterface.OnCancelListener() {
+                                @Override
+                                public void onCancel(DialogInterface dialog) {
+                                    db.delete(holder.id);
+                                    recordingsList.remove(position);
+                                    notifyItemRemoved(position);
+                                    notifyItemRangeChanged(position, getItemCount());
+                                    if (selectedPosition == position)
+                                        selectedPosition = RecyclerView.NO_POSITION;
+                                    else if (selectedPosition > position)
+                                        selectedPosition--;
+                                }
+                            }).create();
+                    dialog.show();
+                } else {
+                    notifyItemChanged(selectedPosition);
+                    selectedPosition = position;
+                    notifyItemChanged(selectedPosition);
+                    SharedPreferences.Editor editor = pref.edit();
+                    editor.putInt(RecordingsFragment.KEY_CURRENT_POSITION_ADAPTER, position);
+                    editor.apply();
+                    if (isServiceRunning(RecorderService.class)) {
+                        Intent stopServiceIntent = new Intent(context, RecorderService.class);
+                        context.stopService(stopServiceIntent);
+                    }
                     Intent intent = new Intent(context, RecordingPlaybackService.class);
-                    intent.putExtra(RecordingsFragment.KEY_FILE_NAME,holder.textName.getText().toString());
+                    intent.putExtra(RecordingsFragment.KEY_FILE_NAME, holder.textName.getText().toString());
                     intent.setAction("PLAY");
                     context.startService(intent);
-                } catch (IOException ex) {
-                    ex.printStackTrace();
                 }
             }
         });
@@ -137,26 +182,9 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
                         switch(which){
                             // Share
                             case 0:
-                                File folder = new File(
-                                        Environment.getExternalStorageDirectory().getAbsolutePath(),
-                                        APPLICATION_FOLDER);
-                                if (!folder.exists())
-                                    folder.mkdirs();
                                 File recording = new File(
-                                        Environment.getExternalStorageDirectory().getAbsolutePath()+"/"+APPLICATION_FOLDER,
+                                        MainActivity.APP_DIR,
                                         holder.textName.getText().toString());
-                                FileOutputStream outputStream;
-                                byte[] recordingByteArray = new RecordingsDbHelper(context)
-                                        .getAudio(holder.id);
-                                try {
-                                    outputStream = new FileOutputStream(recording);
-                                    outputStream.write(recordingByteArray);
-                                    outputStream.close();
-                                } catch (FileNotFoundException e) {
-                                    e.printStackTrace();
-                                } catch (IOException e) {
-                                    e.printStackTrace();
-                                }
                                 StrictMode.VmPolicy.Builder builder = new StrictMode.VmPolicy.Builder();
                                 StrictMode.setVmPolicy(builder.build());
                                 Uri uri = Uri.fromFile(recording);
@@ -166,7 +194,7 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
                                 context.startActivity(
                                         Intent.createChooser(share, context.getResources().getString(R.string.menu_share)));
                                 break;
-                            // Export
+                            // Rename
                             case 1:
                                 final EditText textFileName = new EditText(context);
                                 textFileName.setText(fileName[0]);
@@ -176,26 +204,18 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
                                         .setPositiveButton(R.string.ok, new DialogInterface.OnClickListener() {
                                             @Override
                                             public void onClick(DialogInterface dialog, int which) {
-                                                File folder = new File(
-                                                        Environment.getExternalStorageDirectory().getAbsolutePath(),
-                                                        APPLICATION_FOLDER);
-                                                if (!folder.exists())
-                                                    folder.mkdirs();
-                                                File recording = new File(
-                                                        Environment.getExternalStorageDirectory().getAbsolutePath()+"/"+APPLICATION_FOLDER,
-                                                        textFileName.getText().toString() + "." + fileName[1]);
-                                                FileOutputStream fos;
-                                                byte[] soundByteArray = new RecordingsDbHelper(context)
-                                                        .getAudio(holder.id);
-                                                try {
-                                                    fos = new FileOutputStream(recording);
-                                                    fos.write(soundByteArray);
-                                                    fos.close();
-                                                } catch (FileNotFoundException e) {
-                                                    e.printStackTrace();
-                                                } catch (IOException e) {
-                                                    e.printStackTrace();
-                                                }
+                                                String newName = textFileName.getText() + "." + fileName[1];
+                                                File newFile = new File(
+                                                        MainActivity.APP_DIR + File.separator + newName);
+                                                File oldFile = new File(
+                                                        MainActivity.APP_DIR + File.separator + holder.textName.getText());
+                                                if (oldFile.renameTo(newFile)){
+                                                    db.updateName(holder.id,newName);
+                                                    recordingsList.get(position).setName(newName);
+                                                    notifyItemChanged(position);
+                                                    Toast.makeText(context,R.string.rename_success,Toast.LENGTH_SHORT).show();
+                                                } else
+                                                    Toast.makeText(context,R.string.rename_failed,Toast.LENGTH_SHORT).show();
                                             }
                                         })
                                         .setNegativeButton(R.string.cancel, new DialogInterface.OnClickListener() {
@@ -207,24 +227,6 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
                                 break;
                             // Show details
                             case 2:
-                                File tempMp3 = new File(context.getCacheDir().getAbsolutePath()
-                                        + RecordingPlaybackService.CACHE_FILE_NAME);
-                                tempMp3.deleteOnExit();
-                                FileOutputStream fos;
-                                byte[] soundByteArray = new RecordingsDbHelper(context)
-                                    .getAudio(holder.id);
-                                try {
-                                    fos = new FileOutputStream(tempMp3);
-                                    fos.write(soundByteArray);
-                                    fos.close();
-                                } catch (FileNotFoundException e) {
-                                    e.printStackTrace();
-                                } catch (IOException e) {
-                                    e.printStackTrace();
-                                }
-
-                                MediaMetadataRetriever meta = new MediaMetadataRetriever();
-                                meta.setDataSource(tempMp3.getAbsolutePath());
                                 final AlertDialog.Builder detailBuilder = new AlertDialog.Builder(context);
                                 LayoutInflater inflater = LayoutInflater.from(context);
                                 final View detailsDialogLayout = inflater.inflate(R.layout.dialog_details, null);
@@ -236,7 +238,7 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
                                 textDurationDetails.setText(holder.textDuration.getText());
                                 // Size
                                 TextView textSize = detailsDialogLayout.findViewById(R.id.text_details_size);
-                                int fileSize = soundByteArray.length;
+                                long fileSize = holder.size;
                                 String strSize;
                                 if (fileSize < 1024){
                                     strSize = fileSize + " bytes";
@@ -279,6 +281,9 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
                                                 recordingsList.remove(position);
                                                 notifyItemRemoved(position);
                                                 notifyItemRangeChanged(position, getItemCount());
+                                                // Delete file
+                                                File file = new File(MainActivity.APP_DIR + File.separator + holder.textName.getText());
+                                                if (file.exists()) file.delete();
                                                 if (selectedPosition == position)
                                                     selectedPosition = RecyclerView.NO_POSITION;
                                                 else if (selectedPosition > position)
@@ -323,6 +328,7 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
 
     public class ViewHolder extends RecyclerView.ViewHolder{
         private int id;
+        private long size;
         private TextView textName, textDuration, textDate;
         private ImageButton buttonMore;
         private ImageView icon;

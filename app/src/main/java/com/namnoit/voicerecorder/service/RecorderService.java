@@ -6,7 +6,6 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
 import android.content.BroadcastReceiver;
-import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
@@ -14,39 +13,28 @@ import android.content.SharedPreferences;
 import android.media.MediaMetadataRetriever;
 import android.media.MediaRecorder;
 import android.os.Build;
-import android.os.Environment;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.SystemClock;
 import android.util.Log;
-import android.widget.Chronometer;
-import android.widget.TextView;
 import android.widget.Toast;
-
-import androidx.annotation.RequiresApi;
 import androidx.core.app.NotificationCompat;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
-
 import com.namnoit.voicerecorder.MainActivity;
 import com.namnoit.voicerecorder.R;
-import com.namnoit.voicerecorder.data.Recording;
 import com.namnoit.voicerecorder.data.RecordingsDbHelper;
-
-import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.IOException;
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.Locale;
 import java.util.Objects;
-import java.util.Timer;
-import java.util.TimerTask;
+import java.util.TimeZone;
 
 public class RecorderService extends Service {
     private MediaRecorder recorder;
-    private String tempFile = null;
+    private String fileName = null;
     private static final String CHANNEL_ID = "Voice_Recorder";
     public static final String BROADCAST_FINISH_RECORDING = "RECORDING.FINISH";
     public static final String BROADCAST_UPDATE_TIME = "RECORDING.UPDATE.TIME";
@@ -54,8 +42,6 @@ public class RecorderService extends Service {
     public static final String THREE_GPP = "3gp";
 
     private SharedPreferences pref;
-    private String date;
-    private String dir;
     private Date dateNow;
     private Handler handler = new Handler();
     long timeInMilliseconds = 0L;
@@ -119,13 +105,9 @@ public class RecorderService extends Service {
             registerReceiver(receiver, shutdownFilter);
             registerReceiver(receiver, powerOffFilter);
 
-            // Get file name
-            dir = getApplicationContext().getFilesDir().getAbsolutePath();
-            SimpleDateFormat nameFormat = new SimpleDateFormat("yyyyMMdd_HHmmss");
-            SimpleDateFormat normalFormat = new SimpleDateFormat("MM/dd/yyyy HH:mm:ss");
+            SimpleDateFormat nameFormat = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault());
             dateNow = new Date();
-            date = normalFormat.format(dateNow);
-            tempFile = "Recording_" + nameFormat.format(dateNow);
+            fileName = "Recording_" + nameFormat.format(dateNow);
             // Configure Media Recorder
             recorder = new MediaRecorder();
             recorder.setAudioChannels(2);
@@ -135,33 +117,32 @@ public class RecorderService extends Service {
 
             switch (audioFormat) {
                 case MainActivity.QUALITY_GOOD:
-                    recorder.setOutputFormat(MediaRecorder.OutputFormat.AAC_ADTS);
+                    recorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
                     recorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
                     recorder.setAudioSamplingRate(48000);
                     recorder.setAudioEncodingBitRate(320000);
-                    tempFile += "." + AAC;
+                    fileName += "." + AAC;
                     break;
                 case MainActivity.QUALITY_SMALL:
                     recorder.setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP);
                     recorder.setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB);
                     recorder.setAudioSamplingRate(16000);
                     recorder.setAudioEncodingBitRate(128000);
-                    tempFile += "." + THREE_GPP;
+                    fileName += "." + THREE_GPP;
                     break;
                 default:
                     recorder.setOutputFormat(MediaRecorder.OutputFormat.DEFAULT);
                     recorder.setAudioEncoder(MediaRecorder.AudioEncoder.DEFAULT);
                     recorder.setAudioSamplingRate(16000);
                     recorder.setAudioEncodingBitRate(128000);
-                    tempFile += "." + AAC;
+                    fileName += "." + AAC;
                     break;
             }
-            recorder.setOutputFile(dir + "/" + tempFile);
+            recorder.setOutputFile(MainActivity.APP_DIR + File.separator + fileName);
             try {
                 startForeground(1, notification);
                 recorder.prepare();
                 recorder.start();
-
                 initial_time = SystemClock.uptimeMillis();
                 handler.removeCallbacks(sendUpdatesToUI);
                 handler.postDelayed(sendUpdatesToUI, 1000);
@@ -182,40 +163,35 @@ public class RecorderService extends Service {
         recorder.release();
         recorder = null;
         unregisterReceiver(receiver);
+
+        File file = new File(MainActivity.APP_DIR + File.separator + fileName);
+        long length = file.length();
+        MediaMetadataRetriever metadataRetriever = new MediaMetadataRetriever();
+        metadataRetriever.setDataSource(MainActivity.APP_DIR + File.separator + fileName);
+        String duration = metadataRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION);
+        String dateNoFormat = metadataRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DATE);
+        Log.d("dateformat",dateNoFormat);
+        String formattedDate;
         try {
-            FileInputStream fis = new FileInputStream(dir + "/" + tempFile);
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            byte[] buffer =new byte[1024];
-            int read;
-            while ((read = fis.read(buffer)) != -1) {
-                baos.write(buffer, 0, read);
-                baos.flush();
+            if (dateNoFormat != null) {
+                SimpleDateFormat readDateFormat = new SimpleDateFormat("yyyyMMdd'T'HHmmss.SSS'Z'", Locale.getDefault());
+                readDateFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
+                Date inputDate = readDateFormat.parse(dateNoFormat);
+                SimpleDateFormat dateFormat = new SimpleDateFormat("MM/dd/yyyy HH:mm:ss", Locale.getDefault());
+                formattedDate = dateFormat.format(inputDate);
+            } else{
+                formattedDate = new SimpleDateFormat("MM/dd/yyyy HH:mm:ss",Locale.getDefault()).format(dateNow);
             }
-            byte[] fileByteArray = baos.toByteArray();
-
-            MediaMetadataRetriever metadataRetriever = new MediaMetadataRetriever();
-            metadataRetriever.setDataSource(fis.getFD());
-            String duration = metadataRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION);
-            RecordingsDbHelper dbHelper = new RecordingsDbHelper(getApplicationContext());
-            dbHelper.insert(tempFile,fileByteArray,Integer.parseInt(duration),date);
-
-            // Delete temporary file
-            File delFile = new File(dir + "/" + tempFile);
-            delFile.delete();
-            if(delFile.exists()){
-                delFile.getCanonicalFile().delete();
-                if(delFile.exists()){
-                    getApplicationContext().deleteFile(delFile.getName());
-                }
-            }
-            Toast.makeText(getApplicationContext(), getResources().getText(R.string.toast_recording_saved).toString(), Toast.LENGTH_SHORT).show();
-            Intent broadcast = new Intent(BROADCAST_FINISH_RECORDING);
-            LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(broadcast);
-        } catch (FileNotFoundException e) {
+        } catch (ParseException e) {
             e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
+            formattedDate = new SimpleDateFormat("MM/dd/yyyy HH:mm:ss",Locale.getDefault()).format(dateNow);
         }
+
+        RecordingsDbHelper dbHelper = new RecordingsDbHelper(getApplicationContext());
+        dbHelper.insert(fileName, length, Integer.parseInt(duration), formattedDate);
+        Toast.makeText(getApplicationContext(), getResources().getText(R.string.toast_recording_saved).toString(), Toast.LENGTH_SHORT).show();
+        Intent broadcast = new Intent(BROADCAST_FINISH_RECORDING);
+        LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(broadcast);
         super.onDestroy();
     }
 

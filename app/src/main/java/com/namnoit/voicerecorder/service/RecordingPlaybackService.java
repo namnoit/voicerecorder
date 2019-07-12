@@ -29,7 +29,6 @@ import java.util.Objects;
 public class RecordingPlaybackService extends Service {
     private MediaPlayer mediaPlayer;
     private int currentPosition = 0; // For resume
-    private String cacheFilePath;
     private Handler handler = new Handler();
     private int duration = 0;
     private String fileName;
@@ -38,7 +37,6 @@ public class RecordingPlaybackService extends Service {
     private Intent broadcastStartPlaying = new Intent(RecordingsFragment.BROADCAST_START_PLAYING);
     private Intent broadcastPaused = new Intent(RecordingsFragment.BROADCAST_PAUSED);
     private static final String CHANNEL_ID = "Voice_Recorder_Playback";
-    public static final String CACHE_FILE_NAME = "/recording.mp3";
     public static final String ACTION_PLAY = "PLAY";
     public static final String ACTION_PAUSE = "PAUSE";
     public static final String ACTION_RESUME = "RESUME";
@@ -55,7 +53,6 @@ public class RecordingPlaybackService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
-        cacheFilePath = getCacheDir().getAbsolutePath() + CACHE_FILE_NAME;
 
         mediaPlayer = new MediaPlayer();
         mediaPlayer.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
@@ -92,7 +89,7 @@ public class RecordingPlaybackService extends Service {
             mediaPlayer.reset();
             mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
             try {
-                mediaPlayer.setDataSource(cacheFilePath);
+                mediaPlayer.setDataSource(MainActivity.APP_DIR + File.separator + fileName);
                 mediaPlayer.prepareAsync();
             } catch (IOException e) {
                 e.printStackTrace();
@@ -150,21 +147,7 @@ public class RecordingPlaybackService extends Service {
         SharedPreferences.Editor editor = pref.edit();
         editor.putInt(MainActivity.KEY_STATUS,RecordingsFragment.STATUS_STOPPED);
         editor.apply();
-        // Delete temporary file
-        try {
-            File delFile = new File(cacheFilePath);
-            delFile.delete();
-            if (delFile.exists()) {
-                delFile.getCanonicalFile().delete();
-                if (delFile.exists()) {
-                    getApplicationContext().deleteFile(delFile.getName());
-                }
-            }
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+
         mediaPlayer.release();
         mediaPlayer = null;
     }
@@ -221,8 +204,6 @@ public class RecordingPlaybackService extends Service {
 
     private Runnable updateSeekBarTask = new Runnable() {
         public void run() {
-            broadcastUpdateTime.putExtra(RecordingsFragment.KEY_DURATION,duration);
-            broadcastUpdateTime.putExtra(RecordingsFragment.KEY_FILE_NAME,fileName);
             broadcastUpdateTime.putExtra(RecordingsFragment.KEY_CURRENT_POSITION, mediaPlayer.getCurrentPosition());
             LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(broadcastUpdateTime);
             handler.postDelayed(this, 1000); // 1 seconds
