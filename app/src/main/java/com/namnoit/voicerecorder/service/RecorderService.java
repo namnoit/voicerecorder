@@ -16,7 +16,6 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.SystemClock;
-import android.util.Log;
 import android.widget.Toast;
 import androidx.core.app.NotificationCompat;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
@@ -24,7 +23,13 @@ import com.namnoit.voicerecorder.MainActivity;
 import com.namnoit.voicerecorder.R;
 import com.namnoit.voicerecorder.data.RecordingsDbHelper;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
+import java.math.BigInteger;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -97,7 +102,7 @@ public class RecorderService extends Service {
                     new NotificationCompat.Builder(this, CHANNEL_ID)
                             .setContentTitle(getText(R.string.notification_title_recording))
                             .setContentText(getText(R.string.notification_text_recording))
-                            .setSmallIcon(R.drawable.ic_record)
+                            .setSmallIcon(R.drawable.ic_mic)
                             .setContentIntent(pendingIntent)
                             .addAction(R.drawable.ic_stop, getResources().getString(R.string.stop), stopPendingIntent)
                             .build();
@@ -170,9 +175,21 @@ public class RecorderService extends Service {
         metadataRetriever.setDataSource(MainActivity.APP_DIR + File.separator + fileName);
         String duration = metadataRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION);
         String dateNoFormat = metadataRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DATE);
-        Log.d("dateformat",dateNoFormat);
-        String formattedDate;
+        MessageDigest digest;
         try {
+            digest = MessageDigest.getInstance("MD5");
+            byte[] buffer = new byte[8192];
+            int read;
+            InputStream is = new FileInputStream(file);
+            while ((read = is.read(buffer)) > 0) {
+                digest.update(buffer, 0, read);
+            }
+            byte[] md5sum = digest.digest();
+            BigInteger bigInt = new BigInteger(1, md5sum);
+            String md5 = bigInt.toString(16);
+            // Fill to 32 chars
+            md5 = String.format("%32s", md5).replace(' ', '0');
+            String formattedDate;
             if (dateNoFormat != null) {
                 SimpleDateFormat readDateFormat = new SimpleDateFormat("yyyyMMdd'T'HHmmss.SSS'Z'", Locale.getDefault());
                 readDateFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
@@ -182,16 +199,20 @@ public class RecorderService extends Service {
             } else{
                 formattedDate = new SimpleDateFormat("MM/dd/yyyy HH:mm:ss",Locale.getDefault()).format(dateNow);
             }
+            RecordingsDbHelper dbHelper = new RecordingsDbHelper(getApplicationContext());
+            dbHelper.insert(fileName, length, Integer.parseInt(duration), formattedDate, md5);
+            Toast.makeText(getApplicationContext(), getResources().getText(R.string.toast_recording_saved).toString(), Toast.LENGTH_SHORT).show();
+            Intent broadcast = new Intent(BROADCAST_FINISH_RECORDING);
+            LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(broadcast);
+        } catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
         } catch (ParseException e) {
             e.printStackTrace();
-            formattedDate = new SimpleDateFormat("MM/dd/yyyy HH:mm:ss",Locale.getDefault()).format(dateNow);
         }
-
-        RecordingsDbHelper dbHelper = new RecordingsDbHelper(getApplicationContext());
-        dbHelper.insert(fileName, length, Integer.parseInt(duration), formattedDate);
-        Toast.makeText(getApplicationContext(), getResources().getText(R.string.toast_recording_saved).toString(), Toast.LENGTH_SHORT).show();
-        Intent broadcast = new Intent(BROADCAST_FINISH_RECORDING);
-        LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(broadcast);
         super.onDestroy();
     }
 

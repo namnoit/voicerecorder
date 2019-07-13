@@ -8,19 +8,22 @@ import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.os.SystemClock;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
+
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
+
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.namnoit.voicerecorder.MainActivity;
 import com.namnoit.voicerecorder.R;
 import com.namnoit.voicerecorder.service.RecorderService;
 import com.namnoit.voicerecorder.service.RecordingPlaybackService;
+
+import java.util.Locale;
 
 /**
  * A placeholder fragment containing a simple view.
@@ -45,7 +48,7 @@ public class RecordFragment extends Fragment {
 
             } else {
                 int seconds = intent.getIntExtra("time", 0);
-                String dur = String.format("%02d:%02d:%02d", (seconds / (60 * 60)) % 24, (seconds / 60) % 60, seconds % 60);
+                String dur = String.format(Locale.getDefault(),"%02d:%02d:%02d", (seconds / (60 * 60)) % 24, (seconds / 60) % 60, seconds % 60);
                 textTime.setText(dur);
             }
         }
@@ -100,11 +103,11 @@ public class RecordFragment extends Fragment {
                     }
                     Intent intent = new Intent(getContext(), RecorderService.class);
                     getContext().startService(intent);
-                    recordStopButton.setImageResource(R.drawable.square);
                     recording = true;
                     SharedPreferences.Editor editor = pref.edit();
                     editor.putInt(RECORD_STATUS_SAVED,RECORDING_NOT_SAVED);
                     editor.apply();
+                    recordStopButton.setImageResource(R.drawable.square);
                 }
                 // Stop recording
                 else{

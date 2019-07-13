@@ -8,12 +8,6 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.os.Bundle;
-import androidx.fragment.app.Fragment;
-import androidx.localbroadcastmanager.content.LocalBroadcastManager;
-import androidx.recyclerview.widget.DefaultItemAnimator;
-import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -21,14 +15,23 @@ import android.view.ViewTreeObserver;
 import android.widget.ImageButton;
 import android.widget.SeekBar;
 import android.widget.TextView;
+
+import androidx.fragment.app.Fragment;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
+import androidx.recyclerview.widget.DefaultItemAnimator;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
+
 import com.namnoit.voicerecorder.MainActivity;
 import com.namnoit.voicerecorder.R;
-import com.namnoit.voicerecorder.service.RecordingPlaybackService;
-import com.namnoit.voicerecorder.service.RecorderService;
 import com.namnoit.voicerecorder.RecordingsAdapter;
 import com.namnoit.voicerecorder.data.Recording;
 import com.namnoit.voicerecorder.data.RecordingsDbHelper;
+import com.namnoit.voicerecorder.service.RecorderService;
+import com.namnoit.voicerecorder.service.RecordingPlaybackService;
+
 import java.util.ArrayList;
+import java.util.Locale;
 
 
 /**
@@ -267,7 +270,7 @@ public class RecordingsFragment extends Fragment {
         long s = seconds % 60;
         long m = (seconds / 60) % 60;
         long h = (seconds / (60 * 60)) % 24;
-        return String.format("%02d:%02d:%02d",h,m,s);
+        return String.format(Locale.getDefault(),"%02d:%02d:%02d",h,m,s);
     }
 
     private boolean isServiceRunning(Class<?> serviceClass) {

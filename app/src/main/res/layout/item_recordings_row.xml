@@ -55,7 +55,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_margin="10dp"
-                app:srcCompat="@drawable/ic_record" />
+                app:srcCompat="@drawable/ic_mic" />
 
             <ImageButton
                 android:id="@+id/buttonMore"

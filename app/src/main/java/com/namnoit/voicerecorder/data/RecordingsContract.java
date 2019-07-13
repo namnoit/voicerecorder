@@ -10,5 +10,6 @@ public class RecordingsContract {
         public static final String COLUMN_SIZE = "size";
         public static final String COLUMN_DURATION = "duration";
         public static final String COLUMN_DATE = "date";
+        public static final String COLUMN_MD5 = "md5";
     }
 }

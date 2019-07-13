@@ -26,7 +26,8 @@ public class RecordingsDbHelper extends SQLiteOpenHelper {
             RecordingsContract.RecordingsEntry.COLUMN_NAME + TEXT_TYPE + COMMA_SEP +
             RecordingsContract.RecordingsEntry.COLUMN_SIZE + INT_TYPE + COMMA_SEP +
             RecordingsContract.RecordingsEntry.COLUMN_DATE + TEXT_TYPE + COMMA_SEP +
-            RecordingsContract.RecordingsEntry.COLUMN_DURATION + INT_TYPE + ")";
+            RecordingsContract.RecordingsEntry.COLUMN_DURATION + INT_TYPE + COMMA_SEP +
+            RecordingsContract.RecordingsEntry.COLUMN_MD5 + TEXT_TYPE + ")";
     private static final String SQL_DELETE_ENTRIES = "DROP TABLE IF EXISTS " +
             RecordingsContract.RecordingsEntry.TABLE_NAME;
 
@@ -49,8 +50,6 @@ public class RecordingsDbHelper extends SQLiteOpenHelper {
     public ArrayList<Recording> getAll(){
         ArrayList<Recording> recordings = new ArrayList<>();
         SQLiteDatabase db = this.getReadableDatabase();
-//        Cursor cursor = db.rawQuery("SELECT * FROM " +
-//                RecordingsContract.RecordingsEntry.TABLE_NAME, null);
         Cursor cursor = db.query(RecordingsContract.RecordingsEntry.TABLE_NAME,
                 new String[]{
                         RecordingsContract.RecordingsEntry.COLUMN_ID,
@@ -58,6 +57,7 @@ public class RecordingsDbHelper extends SQLiteOpenHelper {
                         RecordingsContract.RecordingsEntry.COLUMN_SIZE,
                         RecordingsContract.RecordingsEntry.COLUMN_DURATION,
                         RecordingsContract.RecordingsEntry.COLUMN_DATE,
+                        RecordingsContract.RecordingsEntry.COLUMN_MD5
                 },
                 null,
                 null,
@@ -71,7 +71,8 @@ public class RecordingsDbHelper extends SQLiteOpenHelper {
                         cursor.getString(cursor.getColumnIndex(RecordingsContract.RecordingsEntry.COLUMN_NAME)),
                         cursor.getLong(cursor.getColumnIndex(RecordingsContract.RecordingsEntry.COLUMN_SIZE)),
                         cursor.getInt(cursor.getColumnIndex(RecordingsContract.RecordingsEntry.COLUMN_DURATION)),
-                        cursor.getString(cursor.getColumnIndex(RecordingsContract.RecordingsEntry.COLUMN_DATE)));
+                        cursor.getString(cursor.getColumnIndex(RecordingsContract.RecordingsEntry.COLUMN_DATE)),
+                        cursor.getString(cursor.getColumnIndex(RecordingsContract.RecordingsEntry.COLUMN_MD5)));
                 recordings.add(recording);
             } while (cursor.moveToNext());
         }
@@ -80,13 +81,14 @@ public class RecordingsDbHelper extends SQLiteOpenHelper {
         return recordings;
     }
 
-    public void insert(String name, long size, int duration, String date){
+    public void insert(String name, long size, int duration, String date, String md5){
         SQLiteDatabase db = this.getReadableDatabase();
         ContentValues values = new ContentValues();
         values.put(RecordingsContract.RecordingsEntry.COLUMN_NAME, name);
         values.put(RecordingsContract.RecordingsEntry.COLUMN_SIZE, size);
         values.put(RecordingsContract.RecordingsEntry.COLUMN_DURATION, duration);
         values.put(RecordingsContract.RecordingsEntry.COLUMN_DATE, date);
+        values.put(RecordingsContract.RecordingsEntry.COLUMN_MD5, md5);
         db.insert(RecordingsContract.RecordingsEntry.TABLE_NAME,null,values);
     }
 
@@ -99,6 +101,7 @@ public class RecordingsDbHelper extends SQLiteOpenHelper {
                         RecordingsContract.RecordingsEntry.COLUMN_SIZE,
                         RecordingsContract.RecordingsEntry.COLUMN_DURATION,
                         RecordingsContract.RecordingsEntry.COLUMN_DATE,
+                        RecordingsContract.RecordingsEntry.COLUMN_MD5
                 },
                 null,
                 null,
@@ -112,7 +115,8 @@ public class RecordingsDbHelper extends SQLiteOpenHelper {
                     cursor.getString(cursor.getColumnIndex(RecordingsContract.RecordingsEntry.COLUMN_NAME)),
                     cursor.getLong(cursor.getColumnIndex(RecordingsContract.RecordingsEntry.COLUMN_SIZE)),
                     cursor.getInt(cursor.getColumnIndex(RecordingsContract.RecordingsEntry.COLUMN_DURATION)),
-                    cursor.getString(cursor.getColumnIndex(RecordingsContract.RecordingsEntry.COLUMN_DATE)));
+                    cursor.getString(cursor.getColumnIndex(RecordingsContract.RecordingsEntry.COLUMN_DATE)),
+                    cursor.getString(cursor.getColumnIndex(RecordingsContract.RecordingsEntry.COLUMN_MD5)));
         }
         cursor.close();
         db.close();
