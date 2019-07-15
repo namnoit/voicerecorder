@@ -65,7 +65,6 @@ public class RecordingsFragment extends Fragment {
     private int durationMillis = 0;
     private int curMillis = 0;
     private String recordingName = "";
-    // Update list when recordings has been successful but hasn't been saved yet
     private BroadcastReceiver receiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -77,9 +76,6 @@ public class RecordingsFragment extends Fragment {
                     recordingsAdapter.updateSelectedPosition();
                     recordingsAdapter.notifyItemRangeChanged(1,recordingsAdapter.getItemCount());
                     recyclerView.scrollToPosition(0);
-                    SharedPreferences.Editor editor = pref.edit();
-                    editor.putInt(RecordFragment.RECORD_STATUS_SAVED,RecordFragment.RECORDING_SAVED);
-                    editor.apply();
                 }
             }
             if (intent.getAction().equals(BROADCAST_START_PLAYING)) {
@@ -135,23 +131,6 @@ public class RecordingsFragment extends Fragment {
                 new IntentFilter(RecordingsFragment.BROADCAST_START_PLAYING));
         LocalBroadcastManager.getInstance(getContext()).registerReceiver(receiver,
                 new IntentFilter(RecordingsFragment.BROADCAST_PAUSED));
-        if (!isServiceRunning(RecorderService.class) &&
-                pref.getInt(
-                        RecordFragment.RECORD_STATUS_SAVED,
-                        RecordFragment.RECORDING_SAVED) == RecordFragment.RECORDING_NOT_SAVED) {
-            Recording r = db.getLast();
-            if (r != null) {
-                list.add(0, r);
-                recordingsAdapter.notifyItemInserted(0);
-                recordingsAdapter.updateSelectedPosition();
-                recordingsAdapter.notifyItemRangeChanged(1,recordingsAdapter.getItemCount());
-                recyclerView.scrollToPosition(0);
-                recordingsAdapter.notifyItemRemoved(0);
-                SharedPreferences.Editor editor = pref.edit();
-                editor.putInt(RecordFragment.RECORD_STATUS_SAVED,RecordFragment.RECORDING_SAVED);
-                editor.apply();
-            }
-        }
 
         status = pref.getInt(MainActivity.KEY_STATUS,STATUS_STOPPED);
         if (!isServiceRunning(RecordingPlaybackService.class)){

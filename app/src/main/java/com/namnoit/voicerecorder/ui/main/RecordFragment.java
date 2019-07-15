@@ -12,6 +12,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
@@ -32,9 +33,6 @@ public class RecordFragment extends Fragment {
     private FloatingActionButton recordStopButton;
     private TextView textTime;
     private boolean recording = false;
-    public static final String RECORD_STATUS_SAVED = "record_status";
-    public static final int RECORDING_NOT_SAVED = 1;
-    public static final int RECORDING_SAVED = 0;
     private SharedPreferences pref;
     // Prevent double click
     private long mLastClickTime = 0;
@@ -45,7 +43,7 @@ public class RecordFragment extends Fragment {
                 recordStopButton.setImageResource(R.drawable.ic_circle);
                 recording = false;
                 textTime.setText("00:00:00");
-
+                Toast.makeText(getContext(), getResources().getText(R.string.toast_recording_saved).toString(), Toast.LENGTH_SHORT).show();
             } else {
                 int seconds = intent.getIntExtra("time", 0);
                 String dur = String.format(Locale.getDefault(),"%02d:%02d:%02d", (seconds / (60 * 60)) % 24, (seconds / 60) % 60, seconds % 60);
@@ -104,9 +102,6 @@ public class RecordFragment extends Fragment {
                     Intent intent = new Intent(getContext(), RecorderService.class);
                     getContext().startService(intent);
                     recording = true;
-                    SharedPreferences.Editor editor = pref.edit();
-                    editor.putInt(RECORD_STATUS_SAVED,RECORDING_NOT_SAVED);
-                    editor.apply();
                     recordStopButton.setImageResource(R.drawable.square);
                 }
                 // Stop recording

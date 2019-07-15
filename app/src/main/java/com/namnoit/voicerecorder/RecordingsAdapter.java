@@ -60,7 +60,6 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
     public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         LayoutInflater layoutInflater = LayoutInflater.from(parent.getContext());
         View itemView = layoutInflater.inflate(R.layout.item_recordings_row,parent,false);
-
         return new ViewHolder(itemView);
     }
 
@@ -232,11 +231,16 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
                                                     notifyItemRemoved(position);
                                                     notifyItemRangeChanged(position, getItemCount());
                                                     // Delete file
-                                                    if (deleteFile.exists()) deleteFile.delete();
-                                                    if (selectedPosition == position)
-                                                        selectedPosition = RecyclerView.NO_POSITION;
-                                                    else if (selectedPosition > position)
-                                                        selectedPosition--;
+//                                                    if (deleteFile.exists()) deleteFile.delete();
+                                                    if (deleteFile.delete()) {
+                                                        if (selectedPosition == position)
+                                                            selectedPosition = RecyclerView.NO_POSITION;
+                                                        else if (selectedPosition > position)
+                                                            selectedPosition--;
+                                                    } else
+                                                        Toast.makeText(context,
+                                                                context.getResources().getString(R.string.delete_failed),
+                                                                Toast.LENGTH_SHORT).show();
                                                 }
                                             })
                                             .setNegativeButton(R.string.cancel, new DialogInterface.OnClickListener() {

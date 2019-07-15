@@ -5,12 +5,7 @@ import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
-import android.util.Log;
 import androidx.annotation.Nullable;
-
-import com.namnoit.voicerecorder.MainActivity;
-
-import java.io.File;
 import java.util.ArrayList;
 
 public class RecordingsDbHelper extends SQLiteOpenHelper {
@@ -90,6 +85,7 @@ public class RecordingsDbHelper extends SQLiteOpenHelper {
         values.put(RecordingsContract.RecordingsEntry.COLUMN_DATE, date);
         values.put(RecordingsContract.RecordingsEntry.COLUMN_MD5, md5);
         db.insert(RecordingsContract.RecordingsEntry.TABLE_NAME,null,values);
+        db.close();
     }
 
     public Recording getLast(){

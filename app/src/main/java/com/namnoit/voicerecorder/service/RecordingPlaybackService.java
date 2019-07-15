@@ -13,7 +13,6 @@ import android.media.MediaPlayer;
 import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
-import android.util.Log;
 import android.widget.Toast;
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
@@ -22,7 +21,6 @@ import com.namnoit.voicerecorder.MainActivity;
 import com.namnoit.voicerecorder.R;
 import com.namnoit.voicerecorder.ui.main.RecordingsFragment;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.Objects;
 

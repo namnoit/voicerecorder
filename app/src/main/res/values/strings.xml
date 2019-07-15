@@ -46,5 +46,7 @@
     <string name="rename_failed">Rename failed</string>
     <string name="recording_not_found">Recording not found</string>
     <string name="recording_not_found_message">File was deleted or modified externally</string>
+    <string name="delete_failed">Failed to delete file</string>
+    <string name="create_directory_failed">Failed to create directory</string>
 </resources>
 

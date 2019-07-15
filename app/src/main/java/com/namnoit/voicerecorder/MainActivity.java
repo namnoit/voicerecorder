@@ -40,6 +40,7 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.viewpager.widget.ViewPager;
 
 import android.view.Menu;
+import android.widget.Toast;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -92,6 +93,16 @@ public class MainActivity extends AppCompatActivity
                 alertDialog.show();
             }
         }
+        // Create application folder
+        File folder = new File(APP_DIR);
+//        if (!folder.exists()) folder.mkdir();
+        if (!folder.exists() && !folder.mkdir()) {
+            Toast.makeText(getApplicationContext(),
+                    getResources().getString(R.string.create_directory_failed),
+                    Toast.LENGTH_SHORT).show();
+            Log.d("create dir",getResources().getString(R.string.create_directory_failed));
+        }
+
     }
 
     @Override
@@ -102,9 +113,6 @@ public class MainActivity extends AppCompatActivity
         setSupportActionBar(toolbar);
         checkPermissions();
 
-        // Create application folder
-        File folder = new File(APP_DIR);
-        if (!folder.exists()) folder.mkdir();
 
         pref = getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
         qualityChosen = pref.getInt(KEY_QUALITY,QUALITY_GOOD);
@@ -134,7 +142,7 @@ public class MainActivity extends AppCompatActivity
         }
         if (!listPermissionNeeded.isEmpty()) {
             ActivityCompat.requestPermissions(this,
-                    listPermissionNeeded.toArray(new String[listPermissionNeeded.size()]),
+                    listPermissionNeeded.toArray(new String[0]),
                     PERMISSION_REQUEST_CODE);
         }
     }
