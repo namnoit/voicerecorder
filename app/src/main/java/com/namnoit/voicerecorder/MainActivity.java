@@ -23,8 +23,16 @@ import android.os.Environment;
 import android.util.Log;
 import android.view.MenuItem;
 
+import com.google.android.gms.auth.api.signin.GoogleSignIn;
+import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
+import com.google.android.gms.auth.api.signin.GoogleSignInClient;
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
 import com.google.android.material.navigation.NavigationView;
 import com.google.android.material.tabs.TabLayout;
+import com.google.api.client.extensions.android.http.AndroidHttp;
+import com.google.api.client.googleapis.extensions.android.gms.auth.GoogleAccountCredential;
+import com.google.api.client.json.gson.GsonFactory;
+import com.google.api.services.drive.DriveScopes;
 import com.namnoit.voicerecorder.data.RecordingsDbHelper;
 import com.namnoit.voicerecorder.service.RecorderService;
 import com.namnoit.voicerecorder.service.RecordingPlaybackService;
@@ -48,6 +56,7 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity
@@ -68,6 +77,8 @@ public class MainActivity extends AppCompatActivity
     public static final String APP_DIR = DIR + File.separator + APP_FOLDER;
     private SharedPreferences pref;
     private int qualityChosen;
+    private DriveServiceHelper mDriveServiceHelper;
+    private GoogleSignInClient mGoogleSignInClient;
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
@@ -113,6 +124,25 @@ public class MainActivity extends AppCompatActivity
         setSupportActionBar(toolbar);
         checkPermissions();
 
+//        signIn();
+//        GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+//                .requestEmail()
+//                .build();
+//        mGoogleSignInClient = GoogleSignIn.getClient(this, gso);
+//
+//        GoogleSignInAccount account = GoogleSignIn.getLastSignedInAccount(this);
+//        GoogleAccountCredential credential =
+//                GoogleAccountCredential.usingOAuth2(
+//                        getApplicationContext(), Collections.singleton(DriveScopes.DRIVE_FILE));
+//        credential.setSelectedAccount(account.getAccount());
+//        com.google.api.services.drive.Drive googleDriveService =
+//                new com.google.api.services.drive.Drive.Builder(
+//                        AndroidHttp.newCompatibleTransport(),
+//                        new GsonFactory(),
+//                        credential)
+//                        .setApplicationName("AppName")
+//                        .build();
+//        mDriveServiceHelper = new DriveServiceHelper(googleDriveService);
 
         pref = getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
         qualityChosen = pref.getInt(KEY_QUALITY,QUALITY_GOOD);
@@ -145,6 +175,27 @@ public class MainActivity extends AppCompatActivity
                     listPermissionNeeded.toArray(new String[0]),
                     PERMISSION_REQUEST_CODE);
         }
+    }
+
+    private void signIn(){
+        GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                .requestEmail()
+                .build();
+        mGoogleSignInClient = GoogleSignIn.getClient(this, gso);
+
+//        GoogleSignInAccount account = GoogleSignIn.getLastSignedInAccount(this);
+//        GoogleAccountCredential credential =
+//                GoogleAccountCredential.usingOAuth2(
+//                        getApplicationContext(), Collections.singleton(DriveScopes.DRIVE_FILE));
+//        credential.setSelectedAccount(account.getAccount());
+//        com.google.api.services.drive.Drive googleDriveService =
+//                new com.google.api.services.drive.Drive.Builder(
+//                        AndroidHttp.newCompatibleTransport(),
+//                        new GsonFactory(),
+//                        credential)
+//                        .setApplicationName("AppName")
+//                        .build();
+//        mDriveServiceHelper = new DriveServiceHelper(googleDriveService);
     }
 
     @Override
@@ -208,6 +259,8 @@ public class MainActivity extends AppCompatActivity
                     })
                     .create();
             qualityDialog.show();
+
+        } else if (id == R.id.nav_upload) {
 
         } else if (id == R.id.nav_rate) {
             Uri uri = Uri.parse("market://details?id=" + getPackageName());

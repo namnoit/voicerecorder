@@ -12,11 +12,11 @@ import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.media.MediaMetadataRetriever;
 import android.media.MediaRecorder;
+import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.SystemClock;
-import android.widget.Toast;
 import androidx.core.app.NotificationCompat;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import com.namnoit.voicerecorder.MainActivity;
@@ -38,18 +38,17 @@ import java.util.Objects;
 import java.util.TimeZone;
 
 public class RecorderService extends Service {
-    private MediaRecorder recorder;
-    private String fileName = null;
-    private static final String CHANNEL_ID = "Voice_Recorder";
     public static final String BROADCAST_FINISH_RECORDING = "RECORDING.FINISH";
     public static final String BROADCAST_UPDATE_TIME = "RECORDING.UPDATE.TIME";
     public static final String AAC = "aac";
     public static final String THREE_GPP = "3gp";
-
+    private static final String CHANNEL_ID = "Voice_Recorder";
+    long timeInMilliseconds = 0L;
+    private MediaRecorder recorder;
+    private String fileName = null;
     private SharedPreferences pref;
     private Date dateNow;
     private Handler handler = new Handler();
-    long timeInMilliseconds = 0L;
     private long initial_time;
     private int timer;
     private Intent broadcastUpdateTime = new Intent(BROADCAST_UPDATE_TIME);
@@ -63,6 +62,15 @@ public class RecorderService extends Service {
             new IntentFilter("android.intent.action.ACTION_SHUTDOWN");
     private IntentFilter powerOffFilter =
             new IntentFilter("android.intent.action.QUICKBOOT_POWEROFF");
+    private Runnable sendUpdatesToUI = new Runnable() {
+        public void run() {
+            timeInMilliseconds = SystemClock.uptimeMillis() - initial_time;
+            timer = (int) timeInMilliseconds / 1000;
+            broadcastUpdateTime.putExtra("time", timer);
+            LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(broadcastUpdateTime);
+            handler.postDelayed(this, 1000); // 1 seconds
+        }
+    };
 
     public RecorderService() {
     }
@@ -75,9 +83,15 @@ public class RecorderService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        if (Objects.equals(intent.getAction(), RecordingPlaybackService.ACTION_STOP_SERVICE))
-            stopSelf();
-        else {
+        if (Objects.equals(intent.getAction(), RecordingPlaybackService.ACTION_STOP_SERVICE)) {
+            handler.removeCallbacks(sendUpdatesToUI);
+            recorder.stop();
+            recorder.reset();
+            recorder.release();
+            recorder = null;
+            saveFileTask task = new saveFileTask();
+            task.execute();
+        } else {
             // Create foreground Notification
             Intent notificationIntent = new Intent(this, MainActivity.class);
             notificationIntent.setAction(Intent.ACTION_MAIN);
@@ -88,7 +102,11 @@ public class RecorderService extends Service {
             // Stop button
             Intent stopIntent = new Intent(this, RecorderService.class);
             stopIntent.setAction(RecordingPlaybackService.ACTION_STOP_SERVICE);
-            PendingIntent stopPendingIntent = PendingIntent.getService(this, 0, stopIntent, PendingIntent.FLAG_CANCEL_CURRENT);
+            PendingIntent stopPendingIntent = PendingIntent.getService(
+                    this,
+                    0,
+                    stopIntent,
+                    PendingIntent.FLAG_CANCEL_CURRENT);
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 NotificationManager manager = getSystemService(NotificationManager.class);
                 NotificationChannel serviceChannel = new NotificationChannel(
@@ -162,122 +180,13 @@ public class RecorderService extends Service {
 
     @Override
     public void onDestroy() {
-        handler.removeCallbacks(sendUpdatesToUI);
-        recorder.stop();
-        recorder.reset();
-        recorder.release();
-        recorder = null;
         unregisterReceiver(receiver);
-//        new Thread(){
-//            public void run() {
-//                File file = new File(MainActivity.APP_DIR + File.separator + fileName);
-//                long length = file.length();
-//                MediaMetadataRetriever metadataRetriever = new MediaMetadataRetriever();
-//                metadataRetriever.setDataSource(MainActivity.APP_DIR + File.separator + fileName);
-//                String duration = metadataRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION);
-//                String dateNoFormat = metadataRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DATE);
-//                MessageDigest digest;
-//                try {
-//                    digest = MessageDigest.getInstance("MD5");
-//                    byte[] buffer = new byte[8192];
-//                    int read;
-//                    InputStream is = new FileInputStream(file);
-//                    while ((read = is.read(buffer)) > 0) {
-//                        digest.update(buffer, 0, read);
-//                    }
-//                    byte[] md5sum = digest.digest();
-//                    BigInteger bigInt = new BigInteger(1, md5sum);
-//                    String md5 = bigInt.toString(16);
-//                    // Fill to 32 chars
-//                    md5 = String.format("%32s", md5).replace(' ', '0');
-//                    String formattedDate;
-//                    if (dateNoFormat != null) {
-//                        SimpleDateFormat readDateFormat = new SimpleDateFormat("yyyyMMdd'T'HHmmss.SSS'Z'", Locale.getDefault());
-//                        readDateFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
-//                        Date inputDate = readDateFormat.parse(dateNoFormat);
-//                        SimpleDateFormat dateFormat = new SimpleDateFormat("MM/dd/yyyy HH:mm:ss", Locale.getDefault());
-//                        formattedDate = dateFormat.format(inputDate);
-//                    } else{
-//                        formattedDate = new SimpleDateFormat("MM/dd/yyyy HH:mm:ss",Locale.getDefault()).format(dateNow);
-//                    }
-//                    RecordingsDbHelper dbHelper = new RecordingsDbHelper(getApplicationContext());
-//                    dbHelper.insert(fileName, length, Integer.parseInt(duration), formattedDate, md5);
-//                    Intent broadcast = new Intent(BROADCAST_FINISH_RECORDING);
-//                    LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(broadcast);
-//                } catch (NoSuchAlgorithmException e) {
-//                    e.printStackTrace();
-//                } catch (FileNotFoundException e) {
-//                    e.printStackTrace();
-//                } catch (IOException e) {
-//                    e.printStackTrace();
-//                } catch (ParseException e) {
-//                    e.printStackTrace();
-//                }
-//            }
-//        }.start();
-
-        File file = new File(MainActivity.APP_DIR + File.separator + fileName);
-        long length = file.length();
-        MediaMetadataRetriever metadataRetriever = new MediaMetadataRetriever();
-        metadataRetriever.setDataSource(MainActivity.APP_DIR + File.separator + fileName);
-        String duration = metadataRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION);
-        String dateNoFormat = metadataRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DATE);
-        MessageDigest digest;
-        try {
-            digest = MessageDigest.getInstance("MD5");
-            byte[] buffer = new byte[8192];
-            int read;
-            InputStream is = new FileInputStream(file);
-            while ((read = is.read(buffer)) > 0) {
-                digest.update(buffer, 0, read);
-            }
-            byte[] md5sum = digest.digest();
-            BigInteger bigInt = new BigInteger(1, md5sum);
-            String md5 = bigInt.toString(16);
-            // Fill to 32 chars
-            md5 = String.format("%32s", md5).replace(' ', '0');
-            String formattedDate;
-            if (dateNoFormat != null) {
-                SimpleDateFormat readDateFormat = new SimpleDateFormat("yyyyMMdd'T'HHmmss.SSS'Z'", Locale.getDefault());
-                readDateFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
-                Date inputDate = readDateFormat.parse(dateNoFormat);
-                SimpleDateFormat dateFormat = new SimpleDateFormat("MM/dd/yyyy HH:mm:ss", Locale.getDefault());
-                formattedDate = dateFormat.format(inputDate);
-            } else{
-                formattedDate = new SimpleDateFormat("MM/dd/yyyy HH:mm:ss",Locale.getDefault()).format(dateNow);
-            }
-            RecordingsDbHelper dbHelper = new RecordingsDbHelper(getApplicationContext());
-            dbHelper.insert(fileName, length, Integer.parseInt(duration), formattedDate, md5);
-            Toast.makeText(getApplicationContext(), getResources().getText(R.string.toast_recording_saved).toString(), Toast.LENGTH_SHORT).show();
-            Intent broadcast = new Intent(BROADCAST_FINISH_RECORDING);
-            LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(broadcast);
-        } catch (NoSuchAlgorithmException e) {
-            e.printStackTrace();
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
-        } catch (ParseException e) {
-            e.printStackTrace();
-        }
-
-        super.onDestroy();
-
-    }
-
-    private Runnable sendUpdatesToUI = new Runnable() {
-        public void run() {
-            timeInMilliseconds = SystemClock.uptimeMillis() - initial_time;
-            timer = (int) timeInMilliseconds / 1000;
-            broadcastUpdateTime.putExtra("time", timer);
-            LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(broadcastUpdateTime);
-            handler.postDelayed(this, 1000); // 1 seconds
-        }
-    };
-
-    private Runnable saveFileRunnable = new Runnable() {
-        @Override
-        public void run() {
+        if (recorder != null) {
+            handler.removeCallbacks(sendUpdatesToUI);
+            recorder.stop();
+            recorder.reset();
+            recorder.release();
+            recorder = null;
             File file = new File(MainActivity.APP_DIR + File.separator + fileName);
             long length = file.length();
             MediaMetadataRetriever metadataRetriever = new MediaMetadataRetriever();
@@ -286,7 +195,7 @@ public class RecorderService extends Service {
             String dateNoFormat = metadataRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DATE);
             MessageDigest digest;
             try {
-                digest = MessageDigest.getInstance("MD5");
+                digest = MessageDigest.getInstance("SHA-256");
                 byte[] buffer = new byte[8192];
                 int read;
                 InputStream is = new FileInputStream(file);
@@ -305,8 +214,8 @@ public class RecorderService extends Service {
                     Date inputDate = readDateFormat.parse(dateNoFormat);
                     SimpleDateFormat dateFormat = new SimpleDateFormat("MM/dd/yyyy HH:mm:ss", Locale.getDefault());
                     formattedDate = dateFormat.format(inputDate);
-                } else{
-                    formattedDate = new SimpleDateFormat("MM/dd/yyyy HH:mm:ss",Locale.getDefault()).format(dateNow);
+                } else {
+                    formattedDate = new SimpleDateFormat("MM/dd/yyyy HH:mm:ss", Locale.getDefault()).format(dateNow);
                 }
                 RecordingsDbHelper dbHelper = new RecordingsDbHelper(getApplicationContext());
                 dbHelper.insert(fileName, length, Integer.parseInt(duration), formattedDate, md5);
@@ -322,5 +231,60 @@ public class RecorderService extends Service {
                 e.printStackTrace();
             }
         }
-    };
+        super.onDestroy();
+    }
+
+    private class saveFileTask extends AsyncTask<Void, Void, Void> {
+        protected Void doInBackground(Void... args) {
+            File file = new File(MainActivity.APP_DIR + File.separator + fileName);
+            long length = file.length();
+            MediaMetadataRetriever metadataRetriever = new MediaMetadataRetriever();
+            metadataRetriever.setDataSource(MainActivity.APP_DIR + File.separator + fileName);
+            String duration = metadataRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION);
+            String dateNoFormat = metadataRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DATE);
+            MessageDigest digest;
+            try {
+                digest = MessageDigest.getInstance("SHA-256");
+                byte[] buffer = new byte[8192];
+                int read;
+                InputStream is = new FileInputStream(file);
+                while ((read = is.read(buffer)) > 0) {
+                    digest.update(buffer, 0, read);
+                }
+                byte[] md5sum = digest.digest();
+                BigInteger bigInt = new BigInteger(1, md5sum);
+                String md5 = bigInt.toString(16);
+                // Fill to 32 chars
+                md5 = String.format("%32s", md5).replace(' ', '0');
+                String formattedDate;
+                if (dateNoFormat != null) {
+                    SimpleDateFormat readDateFormat = new SimpleDateFormat("yyyyMMdd'T'HHmmss.SSS'Z'", Locale.getDefault());
+                    readDateFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
+                    Date inputDate = readDateFormat.parse(dateNoFormat);
+                    SimpleDateFormat dateFormat = new SimpleDateFormat("MM/dd/yyyy HH:mm:ss", Locale.getDefault());
+                    formattedDate = dateFormat.format(inputDate);
+                } else {
+                    formattedDate = new SimpleDateFormat("MM/dd/yyyy HH:mm:ss", Locale.getDefault()).format(dateNow);
+                }
+                RecordingsDbHelper dbHelper = new RecordingsDbHelper(getApplicationContext());
+                dbHelper.insert(fileName, length, Integer.parseInt(duration), formattedDate, md5);
+
+            } catch (NoSuchAlgorithmException e) {
+                e.printStackTrace();
+            } catch (FileNotFoundException e) {
+                e.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
+            } catch (ParseException e) {
+                e.printStackTrace();
+            }
+            return null;
+        }
+
+        protected void onPostExecute(Void results) {
+            Intent broadcast = new Intent(BROADCAST_FINISH_RECORDING);
+            LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(broadcast);
+            stopSelf();
+        }
+    }
 }

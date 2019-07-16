@@ -5,7 +5,6 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.os.SystemClock;
 import android.view.LayoutInflater;
@@ -19,7 +18,6 @@ import androidx.fragment.app.Fragment;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
-import com.namnoit.voicerecorder.MainActivity;
 import com.namnoit.voicerecorder.R;
 import com.namnoit.voicerecorder.service.RecorderService;
 import com.namnoit.voicerecorder.service.RecordingPlaybackService;
@@ -33,20 +31,23 @@ public class RecordFragment extends Fragment {
     private FloatingActionButton recordStopButton;
     private TextView textTime;
     private boolean recording = false;
-    private SharedPreferences pref;
     // Prevent double click
     private long mLastClickTime = 0;
     private BroadcastReceiver receiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            if (intent.getAction().equals(RecorderService.BROADCAST_FINISH_RECORDING)){
+            if (intent.getAction() != null && intent.getAction().equals(RecorderService.BROADCAST_FINISH_RECORDING)) {
                 recordStopButton.setImageResource(R.drawable.ic_circle);
                 recording = false;
                 textTime.setText("00:00:00");
                 Toast.makeText(getContext(), getResources().getText(R.string.toast_recording_saved).toString(), Toast.LENGTH_SHORT).show();
             } else {
                 int seconds = intent.getIntExtra("time", 0);
-                String dur = String.format(Locale.getDefault(),"%02d:%02d:%02d", (seconds / (60 * 60)) % 24, (seconds / 60) % 60, seconds % 60);
+                String dur = String.format(Locale.getDefault(),
+                        "%02d:%02d:%02d",
+                        (seconds / (60 * 60)) % 24,
+                        (seconds / 60) % 60,
+                        seconds % 60);
                 textTime.setText(dur);
             }
         }
@@ -54,12 +55,12 @@ public class RecordFragment extends Fragment {
 
     @Override
     public void onResume() {
-        LocalBroadcastManager.getInstance(getContext()).registerReceiver(receiver,
+        LocalBroadcastManager.getInstance(requireContext()).registerReceiver(receiver,
                 new IntentFilter(RecorderService.BROADCAST_UPDATE_TIME));
-        LocalBroadcastManager.getInstance(getContext()).registerReceiver(receiver,
+        LocalBroadcastManager.getInstance(requireContext()).registerReceiver(receiver,
                 new IntentFilter(RecorderService.BROADCAST_FINISH_RECORDING));
 
-        if (isServiceRunning(RecorderService.class)){
+        if (isServiceRunning(RecorderService.class)) {
             recordStopButton.setImageResource(R.drawable.square);
             recording = true;
         } else {
@@ -72,7 +73,7 @@ public class RecordFragment extends Fragment {
 
     @Override
     public void onPause() {
-        LocalBroadcastManager.getInstance(getContext()).unregisterReceiver(receiver);
+        LocalBroadcastManager.getInstance(requireContext()).unregisterReceiver(receiver);
         super.onPause();
     }
 
@@ -81,33 +82,33 @@ public class RecordFragment extends Fragment {
             @NonNull LayoutInflater inflater, ViewGroup container,
             Bundle savedInstanceState) {
         View root = inflater.inflate(R.layout.fragment_record, container, false);
-        pref = getContext().getSharedPreferences(MainActivity.PREF_NAME, Context.MODE_PRIVATE);
         recordStopButton = root.findViewById(R.id.button_record_stop);
         textTime = root.findViewById(R.id.textTime);
 
         recordStopButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if (SystemClock.elapsedRealtime() - mLastClickTime < 1000){
+                if (SystemClock.elapsedRealtime() - mLastClickTime < 1000) {
                     return;
                 }
                 mLastClickTime = SystemClock.elapsedRealtime();
                 // Start recording
                 if (!recording) {
                     // Stop playback if playing recordings
-                    if (isServiceRunning(RecordingPlaybackService.class)){
-                        Intent stopIntent = new Intent(getContext(),RecordingPlaybackService.class);
-                        getActivity().stopService(stopIntent);
+                    if (isServiceRunning(RecordingPlaybackService.class)) {
+                        Intent stopIntent = new Intent(getContext(), RecordingPlaybackService.class);
+                        requireContext().stopService(stopIntent);
                     }
                     Intent intent = new Intent(getContext(), RecorderService.class);
-                    getContext().startService(intent);
+                    requireContext().startService(intent);
                     recording = true;
                     recordStopButton.setImageResource(R.drawable.square);
                 }
                 // Stop recording
-                else{
+                else {
                     Intent intent = new Intent(getContext(), RecorderService.class);
-                    getContext().stopService(intent);
+                    intent.setAction(RecordingPlaybackService.ACTION_STOP_SERVICE);
+                    requireContext().startService(intent);
                 }
             }
         });
@@ -115,7 +116,7 @@ public class RecordFragment extends Fragment {
     }
 
     private boolean isServiceRunning(Class<?> serviceClass) {
-        ActivityManager manager = (ActivityManager) getContext().getSystemService(Context.ACTIVITY_SERVICE);
+        ActivityManager manager = (ActivityManager) requireContext().getSystemService(Context.ACTIVITY_SERVICE);
         for (ActivityManager.RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
             if (serviceClass.getName().equals(service.service.getClassName())) {
                 return true;

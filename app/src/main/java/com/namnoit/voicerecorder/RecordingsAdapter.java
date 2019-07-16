@@ -280,11 +280,11 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
             selectedPosition++;
     }
 
-    public class ViewHolder extends RecyclerView.ViewHolder{
+    class ViewHolder extends RecyclerView.ViewHolder{
         private TextView textName, textDuration, textDate;
         private ImageButton buttonMore;
         private ImageView icon;
-        public ViewHolder(@NonNull View itemView) {
+        ViewHolder(@NonNull View itemView) {
             super(itemView);
             icon = itemView.findViewById(R.id.image_record);
             buttonMore = itemView.findViewById(R.id.buttonMore);
@@ -300,7 +300,7 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
         if (file.exists()) {
             MessageDigest digest;
             try {
-                digest = MessageDigest.getInstance("MD5");
+                digest = MessageDigest.getInstance("SHA-256");
                 byte[] buffer = new byte[8192];
                 int read;
                 InputStream is = new FileInputStream(file);

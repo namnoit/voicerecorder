@@ -11,7 +11,6 @@
     <string name="ok">OK</string>
     <string name="delete_title">Delete the recording?</string>
     <string name="will_be_deleted">will be deleted</string>
-
     <string name="menu_quality">Quality</string>
     <string name="menu_gallery">Gallery</string>
     <string name="menu_slideshow">Slideshow</string>
@@ -48,5 +47,6 @@
     <string name="recording_not_found_message">File was deleted or modified externally</string>
     <string name="delete_failed">Failed to delete file</string>
     <string name="create_directory_failed">Failed to create directory</string>
+    <string name="menu_upload_drive">Upload to Google Drive</string>
 </resources>
 

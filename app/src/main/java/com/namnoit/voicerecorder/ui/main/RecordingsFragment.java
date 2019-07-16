@@ -16,6 +16,7 @@ import android.widget.ImageButton;
 import android.widget.SeekBar;
 import android.widget.TextView;
 
+import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.recyclerview.widget.DefaultItemAnimator;
@@ -68,7 +69,8 @@ public class RecordingsFragment extends Fragment {
     private BroadcastReceiver receiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            if (intent.getAction().equals(RecorderService.BROADCAST_FINISH_RECORDING)) {
+            if (intent.getAction() != null &&
+                    intent.getAction().equals(RecorderService.BROADCAST_FINISH_RECORDING)) {
                 Recording r = db.getLast();
                 if (r != null) {
                     list.add(0, r);
@@ -78,7 +80,8 @@ public class RecordingsFragment extends Fragment {
                     recyclerView.scrollToPosition(0);
                 }
             }
-            if (intent.getAction().equals(BROADCAST_START_PLAYING)) {
+            if (intent.getAction() != null &&
+                    intent.getAction().equals(BROADCAST_START_PLAYING)) {
                 status = STATUS_PLAYING;
                 seekBar.setProgress(0);
                 playback.setVisibility(View.VISIBLE);
@@ -89,7 +92,8 @@ public class RecordingsFragment extends Fragment {
                 textDuration.setText(seconds2String(Math.round((float)durationMillis/1000)));
                 playRecordingButton.setImageResource(R.drawable.ic_pause_white);
             }
-            if (intent.getAction().equals(BROADCAST_UPDATE_SEEKBAR)) {
+            if (intent.getAction() != null &&
+                    intent.getAction().equals(BROADCAST_UPDATE_SEEKBAR)) {
                 if (status != STATUS_PLAYING){
                     status = STATUS_PLAYING;
                     playRecordingButton.setImageResource(R.drawable.ic_pause_white);
@@ -98,7 +102,8 @@ public class RecordingsFragment extends Fragment {
                 seekBar.setProgress(curMillis*100/durationMillis);
                 textCurrentPosition.setText(seconds2String(Math.round((float)curMillis/1000)));
             }
-            if (intent.getAction().equals(BROADCAST_FINISH_PLAYING)) {
+            if (intent.getAction() != null &&
+                    intent.getAction().equals(BROADCAST_FINISH_PLAYING)) {
                 seekBar.setProgress(100);
                 status = STATUS_STOPPED;
                 textCurrentPosition.setText("00:00:00");
@@ -107,7 +112,8 @@ public class RecordingsFragment extends Fragment {
                 playback.setEnabled(false);
                 vto.dispatchOnGlobalLayout();
             }
-            if (intent.getAction().equals(BROADCAST_PAUSED)) {
+            if (intent.getAction() != null &&
+                    intent.getAction().equals(BROADCAST_PAUSED)) {
                 status = STATUS_PAUSED;
                 playRecordingButton.setImageResource(R.drawable.ic_play);
             }
@@ -121,15 +127,15 @@ public class RecordingsFragment extends Fragment {
     @Override
     public void onResume() {
         super.onResume();
-        LocalBroadcastManager.getInstance(getContext()).registerReceiver(receiver,
+        LocalBroadcastManager.getInstance(requireContext()).registerReceiver(receiver,
                 new IntentFilter(RecorderService.BROADCAST_FINISH_RECORDING));
-        LocalBroadcastManager.getInstance(getContext()).registerReceiver(receiver,
+        LocalBroadcastManager.getInstance(requireContext()).registerReceiver(receiver,
                 new IntentFilter(RecordingsFragment.BROADCAST_UPDATE_SEEKBAR));
-        LocalBroadcastManager.getInstance(getContext()).registerReceiver(receiver,
+        LocalBroadcastManager.getInstance(requireContext()).registerReceiver(receiver,
                 new IntentFilter(RecordingsFragment.BROADCAST_FINISH_PLAYING));
-        LocalBroadcastManager.getInstance(getContext()).registerReceiver(receiver,
+        LocalBroadcastManager.getInstance(requireContext()).registerReceiver(receiver,
                 new IntentFilter(RecordingsFragment.BROADCAST_START_PLAYING));
-        LocalBroadcastManager.getInstance(getContext()).registerReceiver(receiver,
+        LocalBroadcastManager.getInstance(requireContext()).registerReceiver(receiver,
                 new IntentFilter(RecordingsFragment.BROADCAST_PAUSED));
 
         status = pref.getInt(MainActivity.KEY_STATUS,STATUS_STOPPED);
@@ -158,16 +164,16 @@ public class RecordingsFragment extends Fragment {
 
     @Override
     public void onPause() {
-        LocalBroadcastManager.getInstance(getContext()).unregisterReceiver(receiver);
+        LocalBroadcastManager.getInstance(requireContext()).unregisterReceiver(receiver);
         super.onPause();
     }
 
     @Override
-    public View onCreateView(LayoutInflater inflater, ViewGroup container,
+    public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_recordings, container, false);
 
-        pref = getContext().getSharedPreferences(MainActivity.PREF_NAME, Context.MODE_PRIVATE);
+        pref = requireContext().getSharedPreferences(MainActivity.PREF_NAME, Context.MODE_PRIVATE);
         db = new RecordingsDbHelper(getContext());
         list = db.getAll();
         seekBar = view.findViewById(R.id.seekBar);
@@ -179,7 +185,7 @@ public class RecordingsFragment extends Fragment {
                     Intent playbackIntent = new Intent(getContext(), RecordingPlaybackService.class);
                     playbackIntent.setAction(RecordingPlaybackService.ACTION_SEEK);
                     playbackIntent.putExtra(KEY_SEEK_TO_POSITION,progress);
-                    getContext().startService(playbackIntent);
+                    requireContext().startService(playbackIntent);
                 }
             }
 
@@ -204,13 +210,13 @@ public class RecordingsFragment extends Fragment {
                 if (status == STATUS_PLAYING) {
                     Intent playbackIntent = new Intent(getContext(), RecordingPlaybackService.class);
                     playbackIntent.setAction(RecordingPlaybackService.ACTION_PAUSE);
-                    getContext().startService(playbackIntent);
+                    requireContext().startService(playbackIntent);
                     playRecordingButton.setImageResource(R.drawable.ic_play);
                     status = STATUS_PAUSED;
                 } else if (status == STATUS_PAUSED) {
                     Intent playbackIntent = new Intent(getContext(), RecordingPlaybackService.class);
                     playbackIntent.setAction(RecordingPlaybackService.ACTION_RESUME);
-                    getContext().startService(playbackIntent);
+                    requireContext().startService(playbackIntent);
                     playRecordingButton.setImageResource(R.drawable.ic_pause_white);
                     status = STATUS_PLAYING;
                 }
@@ -220,7 +226,7 @@ public class RecordingsFragment extends Fragment {
             @Override
             public void onClick(View v) {
                 Intent playerIntent = new Intent(getContext(), RecordingPlaybackService.class);
-                getContext().stopService(playerIntent);
+                requireContext().stopService(playerIntent);
                 status = STATUS_STOPPED;
             }
         });
@@ -253,7 +259,7 @@ public class RecordingsFragment extends Fragment {
     }
 
     private boolean isServiceRunning(Class<?> serviceClass) {
-        ActivityManager manager = (ActivityManager) getContext().getSystemService(Context.ACTIVITY_SERVICE);
+        ActivityManager manager = (ActivityManager) requireContext().getSystemService(Context.ACTIVITY_SERVICE);
         for (ActivityManager.RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
             if (serviceClass.getName().equals(service.service.getClassName())) {
                 return true;
