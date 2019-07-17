@@ -46,7 +46,6 @@ public class RecorderService extends Service {
     long timeInMilliseconds = 0L;
     private MediaRecorder recorder;
     private String fileName = null;
-    private SharedPreferences pref;
     private Date dateNow;
     private Handler handler = new Handler();
     private long initial_time;
@@ -135,7 +134,7 @@ public class RecorderService extends Service {
             recorder = new MediaRecorder();
             recorder.setAudioChannels(2);
             recorder.setAudioSource(MediaRecorder.AudioSource.DEFAULT);
-            pref = getSharedPreferences(MainActivity.PREF_NAME, Context.MODE_PRIVATE);
+            SharedPreferences pref = getSharedPreferences(MainActivity.PREF_NAME, Context.MODE_PRIVATE);
             int audioFormat = pref.getInt(MainActivity.KEY_QUALITY, MainActivity.QUALITY_GOOD);
 
             switch (audioFormat) {
@@ -202,11 +201,11 @@ public class RecorderService extends Service {
                 while ((read = is.read(buffer)) > 0) {
                     digest.update(buffer, 0, read);
                 }
-                byte[] md5sum = digest.digest();
-                BigInteger bigInt = new BigInteger(1, md5sum);
-                String md5 = bigInt.toString(16);
+                byte[] hashSum = digest.digest();
+                BigInteger bigInt = new BigInteger(1, hashSum);
+                String hashValue = bigInt.toString(16);
                 // Fill to 32 chars
-                md5 = String.format("%32s", md5).replace(' ', '0');
+                hashValue = String.format("%32s", hashValue).replace(' ', '0');
                 String formattedDate;
                 if (dateNoFormat != null) {
                     SimpleDateFormat readDateFormat = new SimpleDateFormat("yyyyMMdd'T'HHmmss.SSS'Z'", Locale.getDefault());
@@ -218,7 +217,7 @@ public class RecorderService extends Service {
                     formattedDate = new SimpleDateFormat("MM/dd/yyyy HH:mm:ss", Locale.getDefault()).format(dateNow);
                 }
                 RecordingsDbHelper dbHelper = new RecordingsDbHelper(getApplicationContext());
-                dbHelper.insert(fileName, length, Integer.parseInt(duration), formattedDate, md5);
+                dbHelper.insert(fileName, length, Integer.parseInt(duration), formattedDate, hashValue);
                 Intent broadcast = new Intent(BROADCAST_FINISH_RECORDING);
                 LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(broadcast);
             } catch (NoSuchAlgorithmException e) {
@@ -251,11 +250,11 @@ public class RecorderService extends Service {
                 while ((read = is.read(buffer)) > 0) {
                     digest.update(buffer, 0, read);
                 }
-                byte[] md5sum = digest.digest();
-                BigInteger bigInt = new BigInteger(1, md5sum);
-                String md5 = bigInt.toString(16);
+                byte[] hashSum = digest.digest();
+                BigInteger bigInt = new BigInteger(1, hashSum);
+                String hashValue = bigInt.toString(16);
                 // Fill to 32 chars
-                md5 = String.format("%32s", md5).replace(' ', '0');
+                hashValue = String.format("%32s", hashValue).replace(' ', '0');
                 String formattedDate;
                 if (dateNoFormat != null) {
                     SimpleDateFormat readDateFormat = new SimpleDateFormat("yyyyMMdd'T'HHmmss.SSS'Z'", Locale.getDefault());
@@ -267,8 +266,7 @@ public class RecorderService extends Service {
                     formattedDate = new SimpleDateFormat("MM/dd/yyyy HH:mm:ss", Locale.getDefault()).format(dateNow);
                 }
                 RecordingsDbHelper dbHelper = new RecordingsDbHelper(getApplicationContext());
-                dbHelper.insert(fileName, length, Integer.parseInt(duration), formattedDate, md5);
-
+                dbHelper.insert(fileName, length, Integer.parseInt(duration), formattedDate, hashValue);
             } catch (NoSuchAlgorithmException e) {
                 e.printStackTrace();
             } catch (FileNotFoundException e) {

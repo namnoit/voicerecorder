@@ -80,7 +80,7 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
             @Override
             public void onClick(View v) {
                 File file = new File(MainActivity.APP_DIR + File.separator + holder.textName.getText());
-                if (!isFileChanged(file,recordingsList.get(position).getMd5(),position)){
+                if (!isFileChanged(file,recordingsList.get(position).getHashValue(),position)){
                     notifyItemChanged(selectedPosition);
                     selectedPosition = position;
                     notifyItemChanged(selectedPosition);
@@ -128,7 +128,7 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
                                 File recording = new File(
                                         MainActivity.APP_DIR,
                                         holder.textName.getText().toString());
-                                if (!isFileChanged(recording, recordingsList.get(position).getMd5(), position)) {
+                                if (!isFileChanged(recording, recordingsList.get(position).getHashValue(), position)) {
                                     StrictMode.VmPolicy.Builder builder = new StrictMode.VmPolicy.Builder();
                                     StrictMode.setVmPolicy(builder.build());
                                     Uri uri = Uri.fromFile(recording);
@@ -143,7 +143,7 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
                             case 1:
                                 final File oldFile = new File(
                                         MainActivity.APP_DIR + File.separator + holder.textName.getText());
-                                if (!isFileChanged(oldFile, recordingsList.get(position).getMd5(), position)) {
+                                if (!isFileChanged(oldFile, recordingsList.get(position).getHashValue(), position)) {
                                     final EditText textFileName = new EditText(context);
                                     textFileName.setText(fileName[0]);
                                     AlertDialog.Builder alertDialog = new AlertDialog.Builder(context);
@@ -202,7 +202,6 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
                                 textTime.setText(recordingsList.get(position).getDate());
                                 // Format
                                 TextView textFormat = detailsDialogLayout.findViewById(R.id.text_details_format);
-//                                textFormat.setText(meta.extractMetadata(MediaMetadataRetriever.METADATA_KEY_BITRATE));
                                 if (fileName[1].equals(RecorderService.AAC)) {
                                     textFormat.setText(context.getResources().getString(R.string.quality_good));
                                 } else
@@ -218,7 +217,7 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
                             // Delete
                             case 3:
                                 final File deleteFile = new File(MainActivity.APP_DIR + File.separator + holder.textName.getText());
-                                if (!isFileChanged(deleteFile, recordingsList.get(position).getMd5(), position)) {
+                                if (!isFileChanged(deleteFile, recordingsList.get(position).getHashValue(), position)) {
                                     AlertDialog.Builder deleteDialogBuilder = new AlertDialog.Builder(context);
                                     deleteDialogBuilder.setTitle(R.string.delete_title)
                                             .setMessage(fileName[0] + " "

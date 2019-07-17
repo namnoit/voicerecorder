@@ -7,9 +7,13 @@ import android.net.Uri;
 import android.provider.OpenableColumns;
 import android.util.Pair;
 
+import androidx.annotation.Nullable;
+
 import com.google.android.gms.tasks.Task;
 import com.google.android.gms.tasks.Tasks;
 import com.google.api.client.http.ByteArrayContent;
+import com.google.api.client.http.FileContent;
+import com.google.api.client.util.DateTime;
 import com.google.api.services.drive.Drive;
 import com.google.api.services.drive.model.File;
 import com.google.api.services.drive.model.FileList;
@@ -18,6 +22,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
@@ -27,6 +32,9 @@ import java.util.concurrent.Executors;
  * file picker UI via Storage Access Framework.
  */
 public class DriveServiceHelper {
+//    public static final String TYPE_AUDIO = "application/vnd.google-apps.audio";
+public static final String TYPE_AUDIO = "audio/mpeg";
+    public static String TYPE_GOOGLE_DRIVE_FOLDER = "application/vnd.google-apps.folder";
     private final Executor mExecutor = Executors.newSingleThreadExecutor();
     private final Drive mDriveService;
 
@@ -134,6 +142,27 @@ public class DriveServiceHelper {
         return intent;
     }
 
+    public Task<GoogleDriveFileHolder> searchFolder(final String folderName) {
+        return Tasks.call(mExecutor, new Callable<GoogleDriveFileHolder>() {
+            @Override
+            public GoogleDriveFileHolder call() throws Exception {
+
+                // Retrive the metadata as a File object.
+                FileList result = mDriveService.files().list()
+                        .setQ("mimeType = '" + TYPE_GOOGLE_DRIVE_FOLDER + "' and name = '" + folderName + "' ")
+                        .setSpaces("drive")
+                        .execute();
+                GoogleDriveFileHolder googleDriveFileHolder = new GoogleDriveFileHolder();
+                if (result.getFiles().size() > 0) {
+                    googleDriveFileHolder.setId(result.getFiles().get(0).getId());
+                    googleDriveFileHolder.setName(result.getFiles().get(0).getName());
+
+                }
+                return googleDriveFileHolder;
+            }
+        });
+    }
+
     /**
      * Opens the file at the {@code uri} returned by a Storage Access Framework {@link Intent}
      * created by {@link #createFilePickerIntent()} using the given {@code contentResolver}.
@@ -170,4 +199,35 @@ public class DriveServiceHelper {
             }
         });
     }
+
+    public Task<GoogleDriveFileHolder> uploadFile(final java.io.File localFile, final String mimeType, @Nullable final String folderId) {
+        return Tasks.call(mExecutor, new Callable<GoogleDriveFileHolder>() {
+            @Override
+            public GoogleDriveFileHolder call() throws Exception {
+                // Retrieve the metadata as a File object.
+
+                List<String> root;
+                if (folderId == null) {
+                    root = Collections.singletonList("root");
+                } else {
+
+                    root = Collections.singletonList(folderId);
+                }
+
+                File metadata = new File()
+                        .setParents(root)
+                        .setMimeType(mimeType)
+                        .setName(localFile.getName());
+
+                FileContent fileContent = new FileContent(mimeType, localFile);
+
+                File fileMeta = mDriveService.files().create(metadata, fileContent).execute();
+                GoogleDriveFileHolder googleDriveFileHolder = new GoogleDriveFileHolder();
+                googleDriveFileHolder.setId(fileMeta.getId());
+                googleDriveFileHolder.setName(fileMeta.getName());
+                return googleDriveFileHolder;
+            }
+        });
+    }
 }
+

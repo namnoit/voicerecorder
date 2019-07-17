@@ -1,6 +1,7 @@
 package com.namnoit.voicerecorder;
 
 import android.Manifest;
+import android.app.Activity;
 import android.app.ActivityManager;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -10,6 +11,7 @@ import android.content.pm.PackageManager;
 import android.media.MediaMetadataRetriever;
 import android.media.MediaPlayer;
 import android.net.Uri;
+import android.os.AsyncTask;
 import android.os.Bundle;
 
 import androidx.annotation.NonNull;
@@ -21,18 +23,26 @@ import androidx.appcompat.app.ActionBarDrawerToggle;
 
 import android.os.Environment;
 import android.util.Log;
+import android.view.ContextMenu;
 import android.view.MenuItem;
 
 import com.google.android.gms.auth.api.signin.GoogleSignIn;
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
 import com.google.android.gms.auth.api.signin.GoogleSignInClient;
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
+import com.google.android.gms.common.SignInButton;
+import com.google.android.gms.common.api.ApiException;
+import com.google.android.gms.tasks.Task;
 import com.google.android.material.navigation.NavigationView;
 import com.google.android.material.tabs.TabLayout;
 import com.google.api.client.extensions.android.http.AndroidHttp;
 import com.google.api.client.googleapis.extensions.android.gms.auth.GoogleAccountCredential;
+import com.google.api.client.googleapis.extensions.android.gms.auth.UserRecoverableAuthIOException;
+import com.google.api.client.http.FileContent;
 import com.google.api.client.json.gson.GsonFactory;
+import com.google.api.services.drive.Drive;
 import com.google.api.services.drive.DriveScopes;
+import com.namnoit.voicerecorder.data.Recording;
 import com.namnoit.voicerecorder.data.RecordingsDbHelper;
 import com.namnoit.voicerecorder.service.RecorderService;
 import com.namnoit.voicerecorder.service.RecordingPlaybackService;
@@ -48,6 +58,8 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.viewpager.widget.ViewPager;
 
 import android.view.Menu;
+import android.view.View;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import java.io.ByteArrayOutputStream;
@@ -61,12 +73,15 @@ import java.util.List;
 
 public class MainActivity extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener {
+
     private String[] appPermissions = {
             Manifest.permission.RECORD_AUDIO,
             Manifest.permission.WRITE_EXTERNAL_STORAGE,
             Manifest.permission.READ_EXTERNAL_STORAGE
     };
     private static final int PERMISSION_REQUEST_CODE = 100;
+    private static final int AUTHORIZATION_REQUEST_CODE = 101;
+    private static int SIGN_IN_REQUEST_CODE = 102;
     public static final String PREF_NAME = "config";
     public static final String KEY_QUALITY = "quality";
     public static final String KEY_STATUS = "status";
@@ -77,8 +92,13 @@ public class MainActivity extends AppCompatActivity
     public static final String APP_DIR = DIR + File.separator + APP_FOLDER;
     private SharedPreferences pref;
     private int qualityChosen;
+    private NavigationView navigationView;
+    private TextView navEmail, navProfileName;
+
     private DriveServiceHelper mDriveServiceHelper;
     private GoogleSignInClient mGoogleSignInClient;
+    //334025474902-ih2iogepn7f0na08cuh0706fitjrsqv9.apps.googleusercontent.com
+
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
@@ -106,14 +126,45 @@ public class MainActivity extends AppCompatActivity
         }
         // Create application folder
         File folder = new File(APP_DIR);
-//        if (!folder.exists()) folder.mkdir();
         if (!folder.exists() && !folder.mkdir()) {
             Toast.makeText(getApplicationContext(),
                     getResources().getString(R.string.create_directory_failed),
                     Toast.LENGTH_SHORT).show();
-            Log.d("create dir",getResources().getString(R.string.create_directory_failed));
         }
 
+    }
+
+    @Override
+    public void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (resultCode == Activity.RESULT_OK) {
+            // Result returned from launching the Intent from GoogleSignInClient.getSignInIntent(...);
+            if (requestCode == SIGN_IN_REQUEST_CODE) {
+                Task<GoogleSignInAccount> task = GoogleSignIn.getSignedInAccountFromIntent(data);
+                try {
+                    GoogleSignInAccount account = task.getResult(ApiException.class);
+                    // Signed in successfully, show authenticated UI.
+                    updateUI(account);
+//                    if (!GoogleSignIn.hasPermissions(
+//                            GoogleSignIn.getLastSignedInAccount(getApplicationContext()),
+//                            Drive.SCOPE_APPFOLDER,
+//                            SCOPE_EMAIL)) {
+//                        GoogleSignIn.requestPermissions(
+//                                MyExampleActivity.this,
+//                                RC_AUTHORIZE_CONTACTS,
+//                                GoogleSignIn.getLastSignedInAccount(getApplicationContext()),
+//                                SCOPE_CONTACTS_READ,
+//                                SCOPE_EMAIL);
+//                    }
+                } catch (ApiException e) {
+                    // The ApiException status code indicates the detailed failure reason.
+                    // Please refer to the GoogleSignInStatusCodes class reference for more information.
+                    updateUI(null);
+                }
+            } else if (requestCode == AUTHORIZATION_REQUEST_CODE) {
+                uploadFiles();
+            }
+        }
     }
 
     @Override
@@ -124,25 +175,11 @@ public class MainActivity extends AppCompatActivity
         setSupportActionBar(toolbar);
         checkPermissions();
 
-//        signIn();
-//        GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-//                .requestEmail()
-//                .build();
-//        mGoogleSignInClient = GoogleSignIn.getClient(this, gso);
-//
-//        GoogleSignInAccount account = GoogleSignIn.getLastSignedInAccount(this);
-//        GoogleAccountCredential credential =
-//                GoogleAccountCredential.usingOAuth2(
-//                        getApplicationContext(), Collections.singleton(DriveScopes.DRIVE_FILE));
-//        credential.setSelectedAccount(account.getAccount());
-//        com.google.api.services.drive.Drive googleDriveService =
-//                new com.google.api.services.drive.Drive.Builder(
-//                        AndroidHttp.newCompatibleTransport(),
-//                        new GsonFactory(),
-//                        credential)
-//                        .setApplicationName("AppName")
-//                        .build();
-//        mDriveServiceHelper = new DriveServiceHelper(googleDriveService);
+        GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                .requestEmail()
+//                .requestScopes()
+                .build();
+        mGoogleSignInClient = GoogleSignIn.getClient(this, gso);
 
         pref = getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
         qualityChosen = pref.getInt(KEY_QUALITY,QUALITY_GOOD);
@@ -156,10 +193,17 @@ public class MainActivity extends AppCompatActivity
         tabs.setupWithViewPager(viewPager);
 
         DrawerLayout drawer = findViewById(R.id.drawer_layout);
-        NavigationView navigationView = findViewById(R.id.nav_view);
+        navigationView = findViewById(R.id.nav_view);
+        View headerView = navigationView.getHeaderView(0);
+        navEmail = headerView.findViewById(R.id.nav_email);
+        navProfileName = headerView.findViewById(R.id.nav_profile_name);
+        GoogleSignInAccount account = GoogleSignIn.getLastSignedInAccount(this);
+        updateUI(account);
+
         ActionBarDrawerToggle toggle = new ActionBarDrawerToggle(
                 this, drawer, toolbar, R.string.navigation_drawer_open, R.string.navigation_drawer_close);
         drawer.addDrawerListener(toggle);
+
         toggle.syncState();
         navigationView.setNavigationItemSelectedListener(this);
     }
@@ -177,25 +221,16 @@ public class MainActivity extends AppCompatActivity
         }
     }
 
-    private void signIn(){
-        GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-                .requestEmail()
-                .build();
-        mGoogleSignInClient = GoogleSignIn.getClient(this, gso);
 
-//        GoogleSignInAccount account = GoogleSignIn.getLastSignedInAccount(this);
-//        GoogleAccountCredential credential =
-//                GoogleAccountCredential.usingOAuth2(
-//                        getApplicationContext(), Collections.singleton(DriveScopes.DRIVE_FILE));
-//        credential.setSelectedAccount(account.getAccount());
-//        com.google.api.services.drive.Drive googleDriveService =
-//                new com.google.api.services.drive.Drive.Builder(
-//                        AndroidHttp.newCompatibleTransport(),
-//                        new GsonFactory(),
-//                        credential)
-//                        .setApplicationName("AppName")
-//                        .build();
-//        mDriveServiceHelper = new DriveServiceHelper(googleDriveService);
+    private void updateUI(GoogleSignInAccount account){
+        if (account != null){
+            navProfileName.setText(account.getDisplayName());
+            navEmail.setText(account.getEmail());
+        }
+        else{
+            navProfileName.setText(getResources().getString(R.string.app_name));
+            navEmail.setText(getResources().getString(R.string.nav_header_subtitle));
+        }
     }
 
     @Override
@@ -261,6 +296,8 @@ public class MainActivity extends AppCompatActivity
             qualityDialog.show();
 
         } else if (id == R.id.nav_upload) {
+            uploadFiles();
+
 
         } else if (id == R.id.nav_rate) {
             Uri uri = Uri.parse("market://details?id=" + getPackageName());
@@ -280,6 +317,66 @@ public class MainActivity extends AppCompatActivity
         drawer.closeDrawer(GravityCompat.START);
         return true;
     }
+
+    private void uploadFiles(){
+        GoogleSignInAccount account = GoogleSignIn.getLastSignedInAccount(this);
+        if (account == null) {
+            Intent signInIntent = mGoogleSignInClient.getSignInIntent();
+            startActivityForResult(signInIntent, SIGN_IN_REQUEST_CODE);
+//            account = GoogleSignIn.getLastSignedInAccount(this);
+        }
+        // Upload
+        else {
+            GoogleAccountCredential credential = GoogleAccountCredential.usingOAuth2(
+                    getApplicationContext(), Collections.singleton(DriveScopes.DRIVE_FILE));
+            credential.setSelectedAccount(account.getAccount());
+            com.google.api.services.drive.Drive googleDriveService =
+                    new com.google.api.services.drive.Drive.Builder(
+                            AndroidHttp.newCompatibleTransport(),
+                            new GsonFactory(),
+                            credential)
+                            .setApplicationName(getResources().getString(R.string.app_name))
+                            .build();
+            ArrayList<Recording> recordingsList = new RecordingsDbHelper(getApplicationContext()).getAll();
+            for (Recording recording: recordingsList){
+                File file = new File(APP_DIR + File.separator + recording.getName());
+                if (file.exists()){
+                    UploadTask task = new UploadTask(googleDriveService,file);
+                    task.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+                }
+            }
+
+        }
+    }
+
+    private class UploadTask extends AsyncTask<Void,Void,Void> {
+        private File mContentFile;
+        private  Drive mDriveService;
+
+        private UploadTask(Drive driveService, File contentFile){
+            mDriveService = driveService;
+            mContentFile = contentFile;
+        }
+
+        @Override
+        protected Void doInBackground(Void... voids) {
+            if (mContentFile.exists()) {
+                try {
+                    com.google.api.services.drive.model.File file = new com.google.api.services.drive.model.File();
+                    file.setName(mContentFile.getName());
+
+                    FileContent mediaContent = new FileContent(DriveServiceHelper.TYPE_AUDIO, mContentFile);
+                    mDriveService.files().create(file, mediaContent).setFields("id").execute();
+                } catch (UserRecoverableAuthIOException e) {
+                    startActivityForResult(e.getIntent(), AUTHORIZATION_REQUEST_CODE);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+            return null;
+        }
+    }
+
 
     private boolean isServiceRunning(Class<?> serviceClass) {
         ActivityManager manager = (ActivityManager) getApplicationContext().getSystemService(Context.ACTIVITY_SERVICE);

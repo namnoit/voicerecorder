@@ -2,17 +2,17 @@ package com.namnoit.voicerecorder.data;
 
 public class Recording {
     private int ID, duration;
-    private String name, date, md5;
+    private String name, date, hashValue;
     private long size;
 
 
-    public Recording(int ID, String name, long size, int duration, String date, String md5){
+    public Recording(int ID, String name, long size, int duration, String date, String hashValue){
         this.ID = ID;
         this.duration = duration;
         this.name = name;
         this.date = date;
         this.size = size;
-        this.md5 = md5;
+        this.hashValue = hashValue;
     }
 
     public int getID() {
@@ -35,8 +35,8 @@ public class Recording {
         return date;
     }
 
-    public String getMd5() {
-        return md5;
+    public String getHashValue() {
+        return hashValue;
     }
 
     public void setName(String name){
