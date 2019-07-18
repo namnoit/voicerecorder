@@ -8,64 +8,52 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
-import android.media.MediaMetadataRetriever;
-import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.os.Environment;
+import android.util.Log;
+import android.view.Menu;
+import android.view.MenuItem;
+import android.view.View;
+import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.ActionBarDrawerToggle;
 import androidx.appcompat.app.AlertDialog;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.Toolbar;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.core.view.GravityCompat;
-import androidx.appcompat.app.ActionBarDrawerToggle;
-
-import android.os.Environment;
-import android.util.Log;
-import android.view.ContextMenu;
-import android.view.MenuItem;
+import androidx.drawerlayout.widget.DrawerLayout;
+import androidx.viewpager.widget.ViewPager;
 
 import com.google.android.gms.auth.api.signin.GoogleSignIn;
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
 import com.google.android.gms.auth.api.signin.GoogleSignInClient;
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
-import com.google.android.gms.common.SignInButton;
+import com.google.android.gms.common.Scopes;
 import com.google.android.gms.common.api.ApiException;
+import com.google.android.gms.common.api.Scope;
 import com.google.android.gms.tasks.Task;
 import com.google.android.material.navigation.NavigationView;
 import com.google.android.material.tabs.TabLayout;
 import com.google.api.client.extensions.android.http.AndroidHttp;
 import com.google.api.client.googleapis.extensions.android.gms.auth.GoogleAccountCredential;
-import com.google.api.client.googleapis.extensions.android.gms.auth.UserRecoverableAuthIOException;
 import com.google.api.client.http.FileContent;
 import com.google.api.client.json.gson.GsonFactory;
+import com.google.api.client.util.ExponentialBackOff;
 import com.google.api.services.drive.Drive;
 import com.google.api.services.drive.DriveScopes;
-import com.namnoit.voicerecorder.data.Recording;
-import com.namnoit.voicerecorder.data.RecordingsDbHelper;
 import com.namnoit.voicerecorder.service.RecorderService;
 import com.namnoit.voicerecorder.service.RecordingPlaybackService;
+import com.namnoit.voicerecorder.ui.main.PagerAdapter;
 import com.namnoit.voicerecorder.ui.main.RecordFragment;
 import com.namnoit.voicerecorder.ui.main.RecordingsFragment;
-import com.namnoit.voicerecorder.ui.main.PagerAdapter;
 
-import androidx.drawerlayout.widget.DrawerLayout;
-
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.widget.Toolbar;
-import androidx.localbroadcastmanager.content.LocalBroadcastManager;
-import androidx.viewpager.widget.ViewPager;
-
-import android.view.Menu;
-import android.view.View;
-import android.widget.TextView;
-import android.widget.Toast;
-
-import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -87,12 +75,12 @@ public class MainActivity extends AppCompatActivity
     public static final String KEY_STATUS = "status";
     public static final int QUALITY_GOOD = 0;
     public static final int QUALITY_SMALL = 1;
+    public static final String KEY_FOLDER_ID = "folder_id";
     private static final String DIR = Environment.getExternalStorageDirectory().getAbsolutePath();
     private static final String APP_FOLDER = "Ez Voice Recorder";
     public static final String APP_DIR = DIR + File.separator + APP_FOLDER;
     private SharedPreferences pref;
     private int qualityChosen;
-    private NavigationView navigationView;
     private TextView navEmail, navProfileName;
 
     private DriveServiceHelper mDriveServiceHelper;
@@ -143,22 +131,16 @@ public class MainActivity extends AppCompatActivity
                 Task<GoogleSignInAccount> task = GoogleSignIn.getSignedInAccountFromIntent(data);
                 try {
                     GoogleSignInAccount account = task.getResult(ApiException.class);
-                    // Signed in successfully, show authenticated UI.
                     updateUI(account);
-//                    if (!GoogleSignIn.hasPermissions(
-//                            GoogleSignIn.getLastSignedInAccount(getApplicationContext()),
-//                            Drive.SCOPE_APPFOLDER,
-//                            SCOPE_EMAIL)) {
-//                        GoogleSignIn.requestPermissions(
-//                                MyExampleActivity.this,
-//                                RC_AUTHORIZE_CONTACTS,
-//                                GoogleSignIn.getLastSignedInAccount(getApplicationContext()),
-//                                SCOPE_CONTACTS_READ,
-//                                SCOPE_EMAIL);
-//                    }
+                    if (!GoogleSignIn.hasPermissions(account, new Scope(Scopes.DRIVE_FILE))){
+                        GoogleSignIn.requestPermissions(
+                                MainActivity.this,
+                                AUTHORIZATION_REQUEST_CODE,
+                                GoogleSignIn.getLastSignedInAccount(getApplicationContext()),
+                                new Scope(Scopes.DRIVE_FILE));
+                    }
+                    uploadFiles();
                 } catch (ApiException e) {
-                    // The ApiException status code indicates the detailed failure reason.
-                    // Please refer to the GoogleSignInStatusCodes class reference for more information.
                     updateUI(null);
                 }
             } else if (requestCode == AUTHORIZATION_REQUEST_CODE) {
@@ -177,7 +159,7 @@ public class MainActivity extends AppCompatActivity
 
         GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
                 .requestEmail()
-//                .requestScopes()
+                .requestScopes(new Scope(Scopes.DRIVE_FILE))
                 .build();
         mGoogleSignInClient = GoogleSignIn.getClient(this, gso);
 
@@ -193,7 +175,7 @@ public class MainActivity extends AppCompatActivity
         tabs.setupWithViewPager(viewPager);
 
         DrawerLayout drawer = findViewById(R.id.drawer_layout);
-        navigationView = findViewById(R.id.nav_view);
+        NavigationView navigationView = findViewById(R.id.nav_view);
         View headerView = navigationView.getHeaderView(0);
         navEmail = headerView.findViewById(R.id.nav_email);
         navProfileName = headerView.findViewById(R.id.nav_profile_name);
@@ -254,7 +236,7 @@ public class MainActivity extends AppCompatActivity
     }
 
     @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
+    public boolean onOptionsItemSelected(@NonNull MenuItem item) {
         // Handle action bar item clicks here. The action bar will
         // automatically handle clicks on the Home/Up button, so long
         // as you specify a parent activity in AndroidManifest.xml.
@@ -263,7 +245,7 @@ public class MainActivity extends AppCompatActivity
 
     @SuppressWarnings("StatementWithEmptyBody")
     @Override
-    public boolean onNavigationItemSelected(MenuItem item) {
+    public boolean onNavigationItemSelected(@NonNull MenuItem item) {
         // Handle navigation view item clicks here.
         int id = item.getItemId();
         DrawerLayout drawer = findViewById(R.id.drawer_layout);
@@ -295,20 +277,22 @@ public class MainActivity extends AppCompatActivity
                     .create();
             qualityDialog.show();
 
-        } else if (id == R.id.nav_upload) {
+        }
+        else if (id == R.id.nav_upload) {
             uploadFiles();
-
-
-        } else if (id == R.id.nav_rate) {
+        }
+        else if (id == R.id.nav_rate) {
             Uri uri = Uri.parse("market://details?id=" + getPackageName());
             Intent goToMarket = new Intent(Intent.ACTION_VIEW, uri);
             startActivity(goToMarket);
-        }else if (id == R.id.nav_feed_back) {
+        }
+        else if (id == R.id.nav_feed_back) {
             Intent intent = new Intent(Intent.ACTION_SENDTO);
             intent.setData(Uri.parse("mailto:"));
             intent.putExtra(Intent.EXTRA_EMAIL, new String[]{getResources().getString(R.string.my_email)});
             startActivity(intent);
-        } else if (id == R.id.nav_view) {
+        }
+        else if (id == R.id.nav_view) {
 
         }
 
@@ -327,55 +311,60 @@ public class MainActivity extends AppCompatActivity
         }
         // Upload
         else {
-            GoogleAccountCredential credential = GoogleAccountCredential.usingOAuth2(
+            if (!GoogleSignIn.hasPermissions(account, new Scope(Scopes.DRIVE_FILE))){
+                GoogleSignIn.requestPermissions(
+                        MainActivity.this,
+                        AUTHORIZATION_REQUEST_CODE,
+                        GoogleSignIn.getLastSignedInAccount(getApplicationContext()),
+                        new Scope(Scopes.DRIVE_FILE));
+            }
+            final GoogleAccountCredential credential = GoogleAccountCredential.usingOAuth2(
                     getApplicationContext(), Collections.singleton(DriveScopes.DRIVE_FILE));
+            credential.setBackOff(new ExponentialBackOff());
             credential.setSelectedAccount(account.getAccount());
-            com.google.api.services.drive.Drive googleDriveService =
+
+
+            final com.google.api.services.drive.Drive googleDriveService =
                     new com.google.api.services.drive.Drive.Builder(
                             AndroidHttp.newCompatibleTransport(),
                             new GsonFactory(),
                             credential)
                             .setApplicationName(getResources().getString(R.string.app_name))
                             .build();
-            ArrayList<Recording> recordingsList = new RecordingsDbHelper(getApplicationContext()).getAll();
-            for (Recording recording: recordingsList){
-                File file = new File(APP_DIR + File.separator + recording.getName());
-                if (file.exists()){
-                    UploadTask task = new UploadTask(googleDriveService,file);
-                    task.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
-                }
-            }
+            if (mDriveServiceHelper == null)
+                mDriveServiceHelper = new DriveServiceHelper(getApplicationContext(),googleDriveService);
+                mDriveServiceHelper.upload();
+
+//            final com.google.api.services.drive.model.File fileMetadata = new com.google.api.services.drive.model.File();
+//            fileMetadata.setName("Invoices");
+//            fileMetadata.setMimeType("application/vnd.google-apps.folder");
+//            new AsyncTask<Void, Void, Void>() {
+//                @Override
+//                protected Void doInBackground(Void... voids) {
+//                    try {
+////                        if (credential.getToken() != null) {
+//                        Log.d("file ID", credential.getSelectedAccountName());
+//                            com.google.api.services.drive.model.File file = googleDriveService.files().create(fileMetadata)
+//                                    .setFields("id")
+//                                    .execute();
+//
+////                        }
+////                    } catch (UserRecoverableAuthIOException e) {
+////                        startActivityForResult(e.getIntent(), AUTHORIZATION_REQUEST_CODE);
+//                    } catch (IOException e) {
+//                        e.printStackTrace();
+////                    } catch (GoogleAuthException e) {
+////                        e.printStackTrace();
+//                    }
+//                    return null;
+//                }
+//            }.execute();
+
+
 
         }
     }
 
-    private class UploadTask extends AsyncTask<Void,Void,Void> {
-        private File mContentFile;
-        private  Drive mDriveService;
-
-        private UploadTask(Drive driveService, File contentFile){
-            mDriveService = driveService;
-            mContentFile = contentFile;
-        }
-
-        @Override
-        protected Void doInBackground(Void... voids) {
-            if (mContentFile.exists()) {
-                try {
-                    com.google.api.services.drive.model.File file = new com.google.api.services.drive.model.File();
-                    file.setName(mContentFile.getName());
-
-                    FileContent mediaContent = new FileContent(DriveServiceHelper.TYPE_AUDIO, mContentFile);
-                    mDriveService.files().create(file, mediaContent).setFields("id").execute();
-                } catch (UserRecoverableAuthIOException e) {
-                    startActivityForResult(e.getIntent(), AUTHORIZATION_REQUEST_CODE);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-            return null;
-        }
-    }
 
 
     private boolean isServiceRunning(Class<?> serviceClass) {
