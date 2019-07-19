@@ -8,11 +8,10 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.net.ConnectivityManager;
 import android.net.Uri;
-import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Environment;
-import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -39,13 +38,12 @@ import com.google.android.gms.common.api.ApiException;
 import com.google.android.gms.common.api.Scope;
 import com.google.android.gms.tasks.Task;
 import com.google.android.material.navigation.NavigationView;
+import com.google.android.material.snackbar.Snackbar;
 import com.google.android.material.tabs.TabLayout;
 import com.google.api.client.extensions.android.http.AndroidHttp;
 import com.google.api.client.googleapis.extensions.android.gms.auth.GoogleAccountCredential;
-import com.google.api.client.http.FileContent;
 import com.google.api.client.json.gson.GsonFactory;
 import com.google.api.client.util.ExponentialBackOff;
-import com.google.api.services.drive.Drive;
 import com.google.api.services.drive.DriveScopes;
 import com.namnoit.voicerecorder.service.RecorderService;
 import com.namnoit.voicerecorder.service.RecordingPlaybackService;
@@ -54,7 +52,6 @@ import com.namnoit.voicerecorder.ui.main.RecordFragment;
 import com.namnoit.voicerecorder.ui.main.RecordingsFragment;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -68,7 +65,7 @@ public class MainActivity extends AppCompatActivity
             Manifest.permission.READ_EXTERNAL_STORAGE
     };
     private static final int PERMISSION_REQUEST_CODE = 100;
-    private static final int AUTHORIZATION_REQUEST_CODE = 101;
+    private static final int DRIVE_PERMISSIONS_REQUEST_CODE = 101;
     private static int SIGN_IN_REQUEST_CODE = 102;
     public static final String PREF_NAME = "config";
     public static final String KEY_QUALITY = "quality";
@@ -135,15 +132,16 @@ public class MainActivity extends AppCompatActivity
                     if (!GoogleSignIn.hasPermissions(account, new Scope(Scopes.DRIVE_FILE))){
                         GoogleSignIn.requestPermissions(
                                 MainActivity.this,
-                                AUTHORIZATION_REQUEST_CODE,
+                                DRIVE_PERMISSIONS_REQUEST_CODE,
                                 GoogleSignIn.getLastSignedInAccount(getApplicationContext()),
                                 new Scope(Scopes.DRIVE_FILE));
                     }
-                    uploadFiles();
+                    else
+                        uploadFiles();
                 } catch (ApiException e) {
                     updateUI(null);
                 }
-            } else if (requestCode == AUTHORIZATION_REQUEST_CODE) {
+            } else if (requestCode == DRIVE_PERMISSIONS_REQUEST_CODE) {
                 uploadFiles();
             }
         }
@@ -158,11 +156,11 @@ public class MainActivity extends AppCompatActivity
         checkPermissions();
 
         GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+//                .requestIdToken("334025474902-3m9reou6lscdvh6j9egsp6e05cpld0m7.apps.googleusercontent.com")
                 .requestEmail()
-                .requestScopes(new Scope(Scopes.DRIVE_FILE))
+//                .requestScopes(new Scope(Scopes.DRIVE_FILE))
                 .build();
         mGoogleSignInClient = GoogleSignIn.getClient(this, gso);
-
         pref = getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
         qualityChosen = pref.getInt(KEY_QUALITY,QUALITY_GOOD);
 
@@ -303,21 +301,25 @@ public class MainActivity extends AppCompatActivity
     }
 
     private void uploadFiles(){
+        if (!isInternetAvailable()) {
+            View view = findViewById(R.id.layout_record);
+            Snackbar.make(view, R.string.connection_failed, Snackbar.LENGTH_LONG).show();
+            return;
+        }
         GoogleSignInAccount account = GoogleSignIn.getLastSignedInAccount(this);
         if (account == null) {
             Intent signInIntent = mGoogleSignInClient.getSignInIntent();
             startActivityForResult(signInIntent, SIGN_IN_REQUEST_CODE);
-//            account = GoogleSignIn.getLastSignedInAccount(this);
         }
         // Upload
-        else {
-            if (!GoogleSignIn.hasPermissions(account, new Scope(Scopes.DRIVE_FILE))){
+        else if (!GoogleSignIn.hasPermissions(account, new Scope(Scopes.DRIVE_FILE))){
                 GoogleSignIn.requestPermissions(
                         MainActivity.this,
-                        AUTHORIZATION_REQUEST_CODE,
+                        DRIVE_PERMISSIONS_REQUEST_CODE,
                         GoogleSignIn.getLastSignedInAccount(getApplicationContext()),
                         new Scope(Scopes.DRIVE_FILE));
             }
+            else {
             final GoogleAccountCredential credential = GoogleAccountCredential.usingOAuth2(
                     getApplicationContext(), Collections.singleton(DriveScopes.DRIVE_FILE));
             credential.setBackOff(new ExponentialBackOff());
@@ -332,43 +334,20 @@ public class MainActivity extends AppCompatActivity
                             .setApplicationName(getResources().getString(R.string.app_name))
                             .build();
             if (mDriveServiceHelper == null)
-                mDriveServiceHelper = new DriveServiceHelper(getApplicationContext(),googleDriveService);
-                mDriveServiceHelper.upload();
-
-//            final com.google.api.services.drive.model.File fileMetadata = new com.google.api.services.drive.model.File();
-//            fileMetadata.setName("Invoices");
-//            fileMetadata.setMimeType("application/vnd.google-apps.folder");
-//            new AsyncTask<Void, Void, Void>() {
-//                @Override
-//                protected Void doInBackground(Void... voids) {
-//                    try {
-////                        if (credential.getToken() != null) {
-//                        Log.d("file ID", credential.getSelectedAccountName());
-//                            com.google.api.services.drive.model.File file = googleDriveService.files().create(fileMetadata)
-//                                    .setFields("id")
-//                                    .execute();
-//
-////                        }
-////                    } catch (UserRecoverableAuthIOException e) {
-////                        startActivityForResult(e.getIntent(), AUTHORIZATION_REQUEST_CODE);
-//                    } catch (IOException e) {
-//                        e.printStackTrace();
-////                    } catch (GoogleAuthException e) {
-////                        e.printStackTrace();
-//                    }
-//                    return null;
-//                }
-//            }.execute();
-
-
-
+                mDriveServiceHelper = new DriveServiceHelper(getApplicationContext(), googleDriveService);
+            mDriveServiceHelper.upload();
         }
+
     }
 
-
+    private boolean isInternetAvailable() {
+        ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+        return cm != null && cm.getActiveNetworkInfo() != null;
+    }
 
     private boolean isServiceRunning(Class<?> serviceClass) {
         ActivityManager manager = (ActivityManager) getApplicationContext().getSystemService(Context.ACTIVITY_SERVICE);
+        if (manager == null) return false;
         for (ActivityManager.RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
             if (serviceClass.getName().equals(service.service.getClassName())) {
                 return true;

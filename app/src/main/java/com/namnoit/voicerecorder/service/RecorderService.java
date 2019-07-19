@@ -88,42 +88,43 @@ public class RecorderService extends Service {
             recorder.reset();
             recorder.release();
             recorder = null;
-            saveFileTask task = new saveFileTask();
+            SaveFileTask task = new SaveFileTask();
             task.execute();
         } else {
-            // Create foreground Notification
-            Intent notificationIntent = new Intent(this, MainActivity.class);
-            notificationIntent.setAction(Intent.ACTION_MAIN);
-            notificationIntent.addCategory(Intent.CATEGORY_LAUNCHER);
-            notificationIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            PendingIntent pendingIntent =
-                    PendingIntent.getActivity(this, 0, notificationIntent, 0);
-            // Stop button
-            Intent stopIntent = new Intent(this, RecorderService.class);
-            stopIntent.setAction(RecordingPlaybackService.ACTION_STOP_SERVICE);
-            PendingIntent stopPendingIntent = PendingIntent.getService(
-                    this,
-                    0,
-                    stopIntent,
-                    PendingIntent.FLAG_CANCEL_CURRENT);
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                NotificationManager manager = getSystemService(NotificationManager.class);
-                NotificationChannel serviceChannel = new NotificationChannel(
-                        CHANNEL_ID,
-                        "Voice Recorder",
-                        NotificationManager.IMPORTANCE_LOW
-                );
-                manager.createNotificationChannel(serviceChannel);
-            }
-            Notification notification =
-                    new NotificationCompat.Builder(this, CHANNEL_ID)
-                            .setContentTitle(getText(R.string.notification_title_recording))
-                            .setContentText(getText(R.string.notification_text_recording))
-                            .setSmallIcon(R.drawable.ic_mic)
-                            .setContentIntent(pendingIntent)
-                            .addAction(R.drawable.ic_stop, getResources().getString(R.string.stop), stopPendingIntent)
-                            .build();
-
+//            // Create foreground Notification
+//            Intent notificationIntent = new Intent(this, MainActivity.class);
+//            notificationIntent.setAction(Intent.ACTION_MAIN);
+//            notificationIntent.addCategory(Intent.CATEGORY_LAUNCHER);
+//            notificationIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+//            PendingIntent pendingIntent =
+//                    PendingIntent.getActivity(this, 0, notificationIntent, 0);
+//            // Stop button
+//            Intent stopIntent = new Intent(this, RecorderService.class);
+//            stopIntent.setAction(RecordingPlaybackService.ACTION_STOP_SERVICE);
+//            PendingIntent stopPendingIntent = PendingIntent.getService(
+//                    this,
+//                    0,
+//                    stopIntent,
+//                    PendingIntent.FLAG_CANCEL_CURRENT);
+//            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+//                NotificationManager manager = getSystemService(NotificationManager.class);
+//                NotificationChannel serviceChannel = new NotificationChannel(
+//                        CHANNEL_ID,
+//                        "Voice Recorder",
+//                        NotificationManager.IMPORTANCE_LOW
+//                );
+//                manager.createNotificationChannel(serviceChannel);
+//            }
+//            Notification notification =
+//                    new NotificationCompat.Builder(this, CHANNEL_ID)
+//                            .setContentTitle(getText(R.string.notification_title_recording))
+//                            .setContentText(getText(R.string.notification_text_recording))
+//                            .setSmallIcon(R.drawable.ic_mic)
+//                            .setContentIntent(pendingIntent)
+//                            .addAction(R.drawable.ic_stop, getResources().getString(R.string.stop), stopPendingIntent)
+//                            .build();
+            SetUpTask setUpTask = new SetUpTask();
+            setUpTask.execute();
             registerReceiver(receiver, shutdownFilter);
             registerReceiver(receiver, powerOffFilter);
 
@@ -132,7 +133,7 @@ public class RecorderService extends Service {
             fileName = "Recording_" + nameFormat.format(dateNow);
             // Configure Media Recorder
             recorder = new MediaRecorder();
-            recorder.setAudioChannels(2);
+//            recorder.setAudioChannels(2);
             recorder.setAudioSource(MediaRecorder.AudioSource.DEFAULT);
             SharedPreferences pref = getSharedPreferences(MainActivity.PREF_NAME, Context.MODE_PRIVATE);
             int audioFormat = pref.getInt(MainActivity.KEY_QUALITY, MainActivity.QUALITY_GOOD);
@@ -162,7 +163,7 @@ public class RecorderService extends Service {
             }
             recorder.setOutputFile(MainActivity.APP_DIR + File.separator + fileName);
             try {
-                startForeground(1, notification);
+//                startForeground(1, notification);
                 recorder.prepare();
                 recorder.start();
                 initial_time = SystemClock.uptimeMillis();
@@ -233,7 +234,7 @@ public class RecorderService extends Service {
         super.onDestroy();
     }
 
-    private class saveFileTask extends AsyncTask<Void, Void, Void> {
+    private class SaveFileTask extends AsyncTask<Void, Void, Void> {
         protected Void doInBackground(Void... args) {
             File file = new File(MainActivity.APP_DIR + File.separator + fileName);
             long length = file.length();
@@ -283,6 +284,45 @@ public class RecorderService extends Service {
             Intent broadcast = new Intent(BROADCAST_FINISH_RECORDING);
             LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(broadcast);
             stopSelf();
+        }
+    }
+
+    private class SetUpTask extends AsyncTask<Void, Void, Void> {
+        protected Void doInBackground(Void... args) {
+            // Create foreground Notification
+            Intent notificationIntent = new Intent(RecorderService.this, MainActivity.class);
+            notificationIntent.setAction(Intent.ACTION_MAIN);
+            notificationIntent.addCategory(Intent.CATEGORY_LAUNCHER);
+            notificationIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            PendingIntent pendingIntent =
+                    PendingIntent.getActivity(RecorderService.this, 0, notificationIntent, 0);
+            // Stop button
+            Intent stopIntent = new Intent(RecorderService.this, RecorderService.class);
+            stopIntent.setAction(RecordingPlaybackService.ACTION_STOP_SERVICE);
+            PendingIntent stopPendingIntent = PendingIntent.getService(
+                    RecorderService.this,
+                    0,
+                    stopIntent,
+                    PendingIntent.FLAG_CANCEL_CURRENT);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                NotificationManager manager = getSystemService(NotificationManager.class);
+                NotificationChannel serviceChannel = new NotificationChannel(
+                        CHANNEL_ID,
+                        "Voice Recorder",
+                        NotificationManager.IMPORTANCE_LOW
+                );
+                manager.createNotificationChannel(serviceChannel);
+            }
+            Notification notification =
+                    new NotificationCompat.Builder(RecorderService.this, CHANNEL_ID)
+                            .setContentTitle(getText(R.string.notification_title_recording))
+                            .setContentText(getText(R.string.notification_text_recording))
+                            .setSmallIcon(R.drawable.ic_mic)
+                            .setContentIntent(pendingIntent)
+                            .addAction(R.drawable.ic_stop, getResources().getString(R.string.stop), stopPendingIntent)
+                            .build();
+            startForeground(1, notification);
+            return null;
         }
     }
 }
