@@ -11,6 +11,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
+import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ImageView;
@@ -79,7 +80,7 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
         holder.itemView.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                File file = new File(MainActivity.APP_DIR + File.separator + holder.textName.getText());
+                File file = new File(MainActivity.APP_DIR + File.separator + recordingsList.get(position).getName());
                 if (!isFileChanged(file,recordingsList.get(position).getHashValue(),position)){
                     notifyItemChanged(selectedPosition);
                     selectedPosition = position;
@@ -92,10 +93,16 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
                         context.stopService(stopServiceIntent);
                     }
                     Intent intent = new Intent(context, RecordingPlaybackService.class);
-                    intent.putExtra(RecordingsFragment.KEY_FILE_NAME, holder.textName.getText().toString());
+                    intent.putExtra(RecordingsFragment.KEY_FILE_NAME, recordingsList.get(position).getName());
                     intent.setAction("PLAY");
                     context.startService(intent);
                 }
+            }
+        });
+        holder.itemView.setOnLongClickListener(new View.OnLongClickListener() {
+            @Override
+            public boolean onLongClick(View view) {
+                return holder.buttonMore.callOnClick();
             }
         });
         holder.buttonMore.setOnClickListener(new View.OnClickListener() {
@@ -121,7 +128,7 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
                 lv.setOnItemClickListener(new AdapterView.OnItemClickListener() {
                     @Override
                     public void onItemClick(AdapterView<?> parent, View view, int which, long id) {
-                        final String[] fileName = holder.textName.getText().toString().split("\\.");
+                        final String[] fileName = recordingsList.get(position).getName().split("\\.");
                         switch(which) {
                             // Share
                             case 0:

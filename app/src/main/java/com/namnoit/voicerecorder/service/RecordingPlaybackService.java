@@ -145,7 +145,6 @@ public class RecordingPlaybackService extends Service {
         SharedPreferences.Editor editor = pref.edit();
         editor.putInt(MainActivity.KEY_STATUS,RecordingsFragment.STATUS_STOPPED);
         editor.apply();
-
         mediaPlayer.release();
         mediaPlayer = null;
     }

@@ -79,7 +79,6 @@ public class MainActivity extends AppCompatActivity
     private SharedPreferences pref;
     private int qualityChosen;
     private TextView navEmail, navProfileName;
-
     private DriveServiceHelper mDriveServiceHelper;
     private GoogleSignInClient mGoogleSignInClient;
     //334025474902-ih2iogepn7f0na08cuh0706fitjrsqv9.apps.googleusercontent.com
@@ -129,14 +128,14 @@ public class MainActivity extends AppCompatActivity
                 try {
                     GoogleSignInAccount account = task.getResult(ApiException.class);
                     updateUI(account);
-                    if (!GoogleSignIn.hasPermissions(account, new Scope(Scopes.DRIVE_FILE))){
-                        GoogleSignIn.requestPermissions(
-                                MainActivity.this,
-                                DRIVE_PERMISSIONS_REQUEST_CODE,
-                                GoogleSignIn.getLastSignedInAccount(getApplicationContext()),
-                                new Scope(Scopes.DRIVE_FILE));
-                    }
-                    else
+//                    if (!GoogleSignIn.hasPermissions(account, new Scope(Scopes.DRIVE_FILE))){
+//                        GoogleSignIn.requestPermissions(
+//                                MainActivity.this,
+//                                DRIVE_PERMISSIONS_REQUEST_CODE,
+//                                GoogleSignIn.getLastSignedInAccount(getApplicationContext()),
+//                                new Scope(Scopes.DRIVE_FILE));
+//                    }
+//                    else
                         uploadFiles();
                 } catch (ApiException e) {
                     updateUI(null);
@@ -158,7 +157,8 @@ public class MainActivity extends AppCompatActivity
         GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
 //                .requestIdToken("334025474902-3m9reou6lscdvh6j9egsp6e05cpld0m7.apps.googleusercontent.com")
                 .requestEmail()
-//                .requestScopes(new Scope(Scopes.DRIVE_FILE))
+                .requestProfile()
+                .requestScopes(new Scope(Scopes.DRIVE_FILE))
                 .build();
         mGoogleSignInClient = GoogleSignIn.getClient(this, gso);
         pref = getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
@@ -312,13 +312,13 @@ public class MainActivity extends AppCompatActivity
             startActivityForResult(signInIntent, SIGN_IN_REQUEST_CODE);
         }
         // Upload
-        else if (!GoogleSignIn.hasPermissions(account, new Scope(Scopes.DRIVE_FILE))){
-                GoogleSignIn.requestPermissions(
-                        MainActivity.this,
-                        DRIVE_PERMISSIONS_REQUEST_CODE,
-                        GoogleSignIn.getLastSignedInAccount(getApplicationContext()),
-                        new Scope(Scopes.DRIVE_FILE));
-            }
+//        else if (!GoogleSignIn.hasPermissions(account, new Scope(Scopes.DRIVE_FILE))){
+//                GoogleSignIn.requestPermissions(
+//                        MainActivity.this,
+//                        DRIVE_PERMISSIONS_REQUEST_CODE,
+//                        GoogleSignIn.getLastSignedInAccount(getApplicationContext()),
+//                        new Scope(Scopes.DRIVE_FILE));
+//            }
             else {
             final GoogleAccountCredential credential = GoogleAccountCredential.usingOAuth2(
                     getApplicationContext(), Collections.singleton(DriveScopes.DRIVE_FILE));

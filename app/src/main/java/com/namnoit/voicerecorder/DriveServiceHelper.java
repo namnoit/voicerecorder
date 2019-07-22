@@ -2,7 +2,10 @@ package com.namnoit.voicerecorder;
 
 
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
+import android.os.Handler;
+import android.widget.Toast;
 
 import com.google.api.client.googleapis.extensions.android.gms.auth.UserRecoverableAuthIOException;
 import com.google.api.client.http.FileContent;
@@ -57,7 +60,19 @@ class DriveServiceHelper {
                     editor.apply();
                 }
                 catch (UserRecoverableAuthIOException e) {
-                    context.startActivity(e.getIntent());
+                    Intent errorIntent = e.getIntent();
+                    errorIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    context.startActivity(errorIntent);
+                    Handler handler = new Handler(context.getMainLooper());
+                    handler.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            Toast.makeText(context.getApplicationContext(),
+                                    context.getResources().getString(R.string.toast_permissions_check_failed),
+                                    Toast.LENGTH_LONG).show();
+                        }
+                    });
+
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
@@ -71,7 +86,6 @@ class DriveServiceHelper {
                     do {
                         FileList files = request.execute();
                         fileList.addAll(files.getFiles());
-                        request.setPageToken(files.getNextPageToken());
                         request.setPageToken(files.getNextPageToken());
                     }
                     while (request.getPageToken() != null &&
@@ -106,8 +120,7 @@ class DriveServiceHelper {
     };
 
 
-
-    public void upload() {
+    void upload() {
         executor.execute(createFolderRunnable);
     }
 
@@ -129,7 +142,7 @@ class DriveServiceHelper {
                 fileMetadata.setParents(Collections.singletonList(folderId));
                 FileContent mediaContent = new FileContent(TYPE_AUDIO, file);
                 try {
-                    com.google.api.services.drive.model.File driveFile = mDriveService.files().create(fileMetadata, mediaContent)
+                    mDriveService.files().create(fileMetadata, mediaContent)
                             .setFields("id, parents")
                             .execute();
                 } catch (IOException e) {
