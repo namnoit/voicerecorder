@@ -47,9 +47,12 @@
     <string name="recording_not_found_message">File was deleted or modified externally</string>
     <string name="delete_failed">Failed to delete file</string>
     <string name="create_directory_failed">Failed to create directory</string>
-    <string name="menu_upload_drive">Upload to Google Drive</string>
+    <string name="menu_sync_drive">Sync with Google Drive</string>
     <string name="connection_failed">Unable to connect to the Internet</string>
     <string name="toast_permissions_check_failed">Fail to sync. Please allow permission and try again</string>
     <string name="toast_start_recording">Start recording</string>
+    <string name="communicate">Communicate</string>
+    <string name="backup">Backup</string>
+    <string name="restore">Restore</string>
 </resources>
 

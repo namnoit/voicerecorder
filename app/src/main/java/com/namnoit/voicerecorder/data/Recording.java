@@ -4,7 +4,7 @@ public class Recording {
     private int ID, duration;
     private String name, date, hashValue;
     private long size;
-
+    private boolean isOnGoogleDrive;
 
     public Recording(int ID, String name, long size, int duration, String date, String hashValue){
         this.ID = ID;
@@ -13,6 +13,7 @@ public class Recording {
         this.date = date;
         this.size = size;
         this.hashValue = hashValue;
+        isOnGoogleDrive = false;
     }
 
     public int getID() {
@@ -41,5 +42,13 @@ public class Recording {
 
     public void setName(String name){
         this.name = name;
+    }
+
+    public void setOnGoogleDrive(boolean onGoogleDrive){
+        isOnGoogleDrive = onGoogleDrive;
+    }
+
+    public boolean isOnGoogleDrive() {
+        return isOnGoogleDrive;
     }
 }

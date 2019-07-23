@@ -66,7 +66,8 @@ public class MainActivity extends AppCompatActivity
     };
     private static final int PERMISSION_REQUEST_CODE = 100;
     private static final int DRIVE_PERMISSIONS_REQUEST_CODE = 101;
-    private static int SIGN_IN_REQUEST_CODE = 102;
+    private static int BACKUP_SIGN_IN_REQUEST_CODE = 102;
+    private static int RESTORE_SIGN_IN_REQUEST_CODE = 103;
     public static final String PREF_NAME = "config";
     public static final String KEY_QUALITY = "quality";
     public static final String KEY_STATUS = "status";
@@ -123,26 +124,27 @@ public class MainActivity extends AppCompatActivity
         super.onActivityResult(requestCode, resultCode, data);
         if (resultCode == Activity.RESULT_OK) {
             // Result returned from launching the Intent from GoogleSignInClient.getSignInIntent(...);
-            if (requestCode == SIGN_IN_REQUEST_CODE) {
+            if (requestCode == BACKUP_SIGN_IN_REQUEST_CODE) {
                 Task<GoogleSignInAccount> task = GoogleSignIn.getSignedInAccountFromIntent(data);
                 try {
                     GoogleSignInAccount account = task.getResult(ApiException.class);
                     updateUI(account);
-//                    if (!GoogleSignIn.hasPermissions(account, new Scope(Scopes.DRIVE_FILE))){
-//                        GoogleSignIn.requestPermissions(
-//                                MainActivity.this,
-//                                DRIVE_PERMISSIONS_REQUEST_CODE,
-//                                GoogleSignIn.getLastSignedInAccount(getApplicationContext()),
-//                                new Scope(Scopes.DRIVE_FILE));
-//                    }
-//                    else
-                        uploadFiles();
+                    sync(true);
                 } catch (ApiException e) {
                     updateUI(null);
                 }
-            } else if (requestCode == DRIVE_PERMISSIONS_REQUEST_CODE) {
-                uploadFiles();
             }
+            else if (requestCode == RESTORE_SIGN_IN_REQUEST_CODE) {
+                Task<GoogleSignInAccount> task = GoogleSignIn.getSignedInAccountFromIntent(data);
+                try {
+                    GoogleSignInAccount account = task.getResult(ApiException.class);
+                    updateUI(account);
+                    sync(false);
+                } catch (ApiException e) {
+                    updateUI(null);
+                }
+            }
+
         }
     }
 
@@ -158,7 +160,7 @@ public class MainActivity extends AppCompatActivity
 //                .requestIdToken("334025474902-3m9reou6lscdvh6j9egsp6e05cpld0m7.apps.googleusercontent.com")
                 .requestEmail()
                 .requestProfile()
-                .requestScopes(new Scope(Scopes.DRIVE_FILE))
+                .requestScopes(new Scope(Scopes.DRIVE_FILE),new Scope(Scopes.DRIVE_APPFOLDER))
                 .build();
         mGoogleSignInClient = GoogleSignIn.getClient(this, gso);
         pref = getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
@@ -276,8 +278,11 @@ public class MainActivity extends AppCompatActivity
             qualityDialog.show();
 
         }
-        else if (id == R.id.nav_upload) {
-            uploadFiles();
+        else if (id == R.id.nav_backup) {
+            sync(true);
+        }
+        else if (id ==R.id.nav_restore){
+            sync(false);
         }
         else if (id == R.id.nav_rate) {
             Uri uri = Uri.parse("market://details?id=" + getPackageName());
@@ -300,49 +305,44 @@ public class MainActivity extends AppCompatActivity
         return true;
     }
 
-    private void uploadFiles(){
-        if (!isInternetAvailable()) {
-            View view = findViewById(R.id.layout_record);
-            Snackbar.make(view, R.string.connection_failed, Snackbar.LENGTH_LONG).show();
-            return;
-        }
-        GoogleSignInAccount account = GoogleSignIn.getLastSignedInAccount(this);
-        if (account == null) {
-            Intent signInIntent = mGoogleSignInClient.getSignInIntent();
-            startActivityForResult(signInIntent, SIGN_IN_REQUEST_CODE);
-        }
-        // Upload
-//        else if (!GoogleSignIn.hasPermissions(account, new Scope(Scopes.DRIVE_FILE))){
-//                GoogleSignIn.requestPermissions(
-//                        MainActivity.this,
-//                        DRIVE_PERMISSIONS_REQUEST_CODE,
-//                        GoogleSignIn.getLastSignedInAccount(getApplicationContext()),
-//                        new Scope(Scopes.DRIVE_FILE));
-//            }
+    private void sync(boolean backup) {
+        if (isInternetAvailable()) {
+            GoogleSignInAccount account = GoogleSignIn.getLastSignedInAccount(this);
+            if (account == null) {
+                Intent signInIntent = mGoogleSignInClient.getSignInIntent();
+                startActivityForResult(signInIntent, backup ? BACKUP_SIGN_IN_REQUEST_CODE : RESTORE_SIGN_IN_REQUEST_CODE);
+            }
             else {
-            final GoogleAccountCredential credential = GoogleAccountCredential.usingOAuth2(
-                    getApplicationContext(), Collections.singleton(DriveScopes.DRIVE_FILE));
-            credential.setBackOff(new ExponentialBackOff());
-            credential.setSelectedAccount(account.getAccount());
+                final GoogleAccountCredential credential = GoogleAccountCredential.usingOAuth2(
+                        getApplicationContext(), Collections.singleton(DriveScopes.DRIVE_FILE));
+                credential.setBackOff(new ExponentialBackOff());
+                credential.setSelectedAccount(account.getAccount());
 
+                final com.google.api.services.drive.Drive googleDriveService =
+                        new com.google.api.services.drive.Drive.Builder(
+                                AndroidHttp.newCompatibleTransport(),
+                                new GsonFactory(),
+                                credential)
+                                .setApplicationName(getResources().getString(R.string.app_name))
+                                .build();
+                if (mDriveServiceHelper == null)
+                    mDriveServiceHelper = new DriveServiceHelper(getApplicationContext(), googleDriveService);
+                if (backup) mDriveServiceHelper.backUp();
+                else mDriveServiceHelper.restore();
+            }
 
-            final com.google.api.services.drive.Drive googleDriveService =
-                    new com.google.api.services.drive.Drive.Builder(
-                            AndroidHttp.newCompatibleTransport(),
-                            new GsonFactory(),
-                            credential)
-                            .setApplicationName(getResources().getString(R.string.app_name))
-                            .build();
-            if (mDriveServiceHelper == null)
-                mDriveServiceHelper = new DriveServiceHelper(getApplicationContext(), googleDriveService);
-            mDriveServiceHelper.upload();
         }
-
     }
+
 
     private boolean isInternetAvailable() {
         ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
-        return cm != null && cm.getActiveNetworkInfo() != null;
+        boolean internet = cm != null && cm.getActiveNetworkInfo() != null;
+        if (!internet) {
+            View view = findViewById(R.id.layout_record);
+            Snackbar.make(view, R.string.connection_failed, Snackbar.LENGTH_LONG).show();
+        }
+        return internet;
     }
 
     private boolean isServiceRunning(Class<?> serviceClass) {

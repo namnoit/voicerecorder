@@ -3,18 +3,28 @@
     xmlns:tools="http://schemas.android.com/tools"
     tools:showIn="navigation_view">
 
-    <group android:checkableBehavior="single">
+
         <item
             android:id="@+id/nav_quality"
             android:icon="@drawable/ic_music"
             android:title="@string/menu_quality" />
-        <item
-            android:id="@+id/nav_upload"
-            android:icon="@drawable/ic_drive"
-            android:title="@string/menu_upload_drive" />
-    </group>
 
-    <item android:title="Communicate">
+
+    <item android:title="@string/menu_sync_drive"
+        android:icon="@drawable/ic_drive">
+        <menu>
+            <item
+                android:id="@+id/nav_backup"
+                android:icon="@drawable/ic_backup"
+                android:title="@string/backup" />
+            <item
+                android:id="@+id/nav_restore"
+                android:icon="@drawable/ic_restore"
+                android:title="@string/restore" />
+        </menu>
+    </item>
+
+    <item android:title="@string/communicate">
         <menu>
             <item
                 android:id="@+id/nav_rate"

@@ -99,10 +99,13 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
                 }
             }
         });
+
+
         holder.itemView.setOnLongClickListener(new View.OnLongClickListener() {
             @Override
             public boolean onLongClick(View view) {
-                return holder.buttonMore.callOnClick();
+
+                return true;
             }
         });
         holder.buttonMore.setOnClickListener(new View.OnClickListener() {
@@ -237,7 +240,6 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
                                                     notifyItemRemoved(position);
                                                     notifyItemRangeChanged(position, getItemCount());
                                                     // Delete file
-//                                                    if (deleteFile.exists()) deleteFile.delete();
                                                     if (deleteFile.delete()) {
                                                         if (selectedPosition == position)
                                                             selectedPosition = RecyclerView.NO_POSITION;
