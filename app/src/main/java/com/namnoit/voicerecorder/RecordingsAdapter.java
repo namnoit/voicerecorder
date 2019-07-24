@@ -74,6 +74,9 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
         final String dur = String.format(Locale.getDefault(),"%02d:%02d:%02d",h,m,s);
         holder.textDuration.setText(dur);
         holder.textDate.setText(recordingsList.get(position).getDate());
+        if (recordingsList.get(position).isOnGoogleDrive()){
+            holder.line.setVisibility(View.VISIBLE);
+        }else holder.line.setVisibility(View.INVISIBLE);
         if (position == selectedPosition) holder.icon.setImageResource(R.drawable.ic_play_red);
         else holder.icon.setImageResource(R.drawable.ic_mic);
 
@@ -291,7 +294,7 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
     class ViewHolder extends RecyclerView.ViewHolder{
         private TextView textName, textDuration, textDate;
         private ImageButton buttonMore;
-        private ImageView icon;
+        private ImageView icon, line;
         ViewHolder(@NonNull View itemView) {
             super(itemView);
             icon = itemView.findViewById(R.id.image_record);
@@ -299,6 +302,7 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
             textName = itemView.findViewById(R.id.item_recording_name);
             textDuration = itemView.findViewById(R.id.item_recording_duration);
             textDate = itemView.findViewById(R.id.item_recording_date);
+            line = itemView.findViewById(R.id.line);
         }
 
     }

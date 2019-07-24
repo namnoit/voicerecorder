@@ -54,5 +54,8 @@
     <string name="communicate">Communicate</string>
     <string name="backup">Backup</string>
     <string name="restore">Restore</string>
+    <string name="notification_text_uploaded">File uploaded</string>
+    <string name="notification_text_downloaded">File downloaded</string>
+    <string name="drive_line_description">To show if this file is on Google Drive</string>
 </resources>
 

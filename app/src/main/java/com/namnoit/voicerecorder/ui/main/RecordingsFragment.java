@@ -7,6 +7,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
+import android.net.ConnectivityManager;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -23,6 +24,14 @@ import androidx.recyclerview.widget.DefaultItemAnimator;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.google.android.gms.auth.api.signin.GoogleSignIn;
+import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
+import com.google.api.client.extensions.android.http.AndroidHttp;
+import com.google.api.client.googleapis.extensions.android.gms.auth.GoogleAccountCredential;
+import com.google.api.client.json.gson.GsonFactory;
+import com.google.api.client.util.ExponentialBackOff;
+import com.google.api.services.drive.DriveScopes;
+import com.namnoit.voicerecorder.DriveChecker;
 import com.namnoit.voicerecorder.MainActivity;
 import com.namnoit.voicerecorder.R;
 import com.namnoit.voicerecorder.RecordingsAdapter;
@@ -32,6 +41,7 @@ import com.namnoit.voicerecorder.service.RecorderService;
 import com.namnoit.voicerecorder.service.RecordingPlaybackService;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Locale;
 
 
@@ -55,10 +65,14 @@ public class RecordingsFragment extends Fragment {
     public static final int STATUS_STOPPED = 2;
     public static final String BROADCAST_UPDATE_SEEKBAR = "UPDATE_SEEKBAR";
     public static final String BROADCAST_FINISH_PLAYING = "PLAY_FINISH";
+    public static final String BROADCAST_FILE_DOWNLOADED = "FILE_DOWNLOADED";
+    public static final String BROADCAST_FILE_UPLOADED = "FILE_UPLOADED";
     public static final String BROADCAST_START_PLAYING = "START_PLAYING";
     public static final String BROADCAST_PAUSED = "PAUSED";
     public static final String KEY_CURRENT_POSITION = "current_position";
     public static final String KEY_DURATION = "duration";
+    public static final String KEY_POSITION = "position";
+    public static final String KEY_HASH_VALUE = "hash_value";
     public static final String KEY_FILE_NAME = "file_name";
     public static final String KEY_SEEK_TO_POSITION = "seek";
     // To show current item selected in list
@@ -78,6 +92,26 @@ public class RecordingsFragment extends Fragment {
                     recordingsAdapter.updateSelectedPosition();
                     recordingsAdapter.notifyItemRangeChanged(1,recordingsAdapter.getItemCount());
                     recyclerView.scrollToPosition(0);
+                }
+            }
+            if (intent.getAction() != null &&
+                    intent.getAction().equals(BROADCAST_FILE_DOWNLOADED)){
+                Recording r = db.getRecordingWithHash(intent.getStringExtra(KEY_HASH_VALUE));
+                if (r != null) {
+                    r.setOnGoogleDrive(true);
+                    list.add(0, r);
+                    recordingsAdapter.notifyItemInserted(0);
+                    recordingsAdapter.updateSelectedPosition();
+                    recordingsAdapter.notifyItemRangeChanged(1,recordingsAdapter.getItemCount());
+                    recyclerView.scrollToPosition(0);
+                }
+            }
+            if (intent.getAction() != null &&
+                    intent.getAction().equals(BROADCAST_FILE_UPLOADED)){
+                int pos = intent.getIntExtra(KEY_POSITION,-1);
+                if (pos>=0 && pos<list.size()){
+                    list.get(pos).setOnGoogleDrive(true);
+                    recordingsAdapter.notifyItemChanged(pos);
                 }
             }
             if (intent.getAction() != null &&
@@ -137,7 +171,10 @@ public class RecordingsFragment extends Fragment {
                 new IntentFilter(RecordingsFragment.BROADCAST_START_PLAYING));
         LocalBroadcastManager.getInstance(requireContext()).registerReceiver(receiver,
                 new IntentFilter(RecordingsFragment.BROADCAST_PAUSED));
-
+        LocalBroadcastManager.getInstance(requireContext()).registerReceiver(receiver,
+                new IntentFilter(RecordingsFragment.BROADCAST_FILE_DOWNLOADED));
+        LocalBroadcastManager.getInstance(requireContext()).registerReceiver(receiver,
+                new IntentFilter(RecordingsFragment.BROADCAST_FILE_UPLOADED));
         status = pref.getInt(MainActivity.KEY_STATUS,STATUS_STOPPED);
         if (!isServiceRunning(RecordingPlaybackService.class)){
             status = STATUS_STOPPED;
@@ -239,6 +276,8 @@ public class RecordingsFragment extends Fragment {
         recyclerView.setAdapter(recordingsAdapter);
         playback = view.findViewById(R.id.playback);
 
+        updateUI();
+
         vto = playback.getViewTreeObserver();
         vto.addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
             @Override
@@ -249,6 +288,29 @@ public class RecordingsFragment extends Fragment {
             }
         });
         return view;
+    }
+
+    private void updateUI(){
+        ConnectivityManager cm = (ConnectivityManager) requireContext().getSystemService(Context.CONNECTIVITY_SERVICE);
+        if (cm != null && cm.getActiveNetworkInfo() != null) {
+            GoogleSignInAccount account = GoogleSignIn.getLastSignedInAccount(requireContext());
+            if (account != null) {
+                final GoogleAccountCredential credential = GoogleAccountCredential.usingOAuth2(
+                        requireContext(), Arrays.asList(DriveScopes.DRIVE_APPDATA, DriveScopes.DRIVE_FILE));
+                credential.setBackOff(new ExponentialBackOff());
+                credential.setSelectedAccount(account.getAccount());
+
+                final com.google.api.services.drive.Drive googleDriveService =
+                        new com.google.api.services.drive.Drive.Builder(
+                                AndroidHttp.newCompatibleTransport(),
+                                new GsonFactory(),
+                                credential)
+                                .setApplicationName(getResources().getString(R.string.app_name))
+                                .build();
+                DriveChecker checker = new DriveChecker(requireContext(), googleDriveService, list, recordingsAdapter);
+                checker.check();
+            }
+        }
     }
 
     private String seconds2String(int seconds){

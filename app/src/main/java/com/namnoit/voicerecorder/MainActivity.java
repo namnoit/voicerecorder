@@ -12,6 +12,7 @@ import android.net.ConnectivityManager;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -42,6 +43,7 @@ import com.google.android.material.snackbar.Snackbar;
 import com.google.android.material.tabs.TabLayout;
 import com.google.api.client.extensions.android.http.AndroidHttp;
 import com.google.api.client.googleapis.extensions.android.gms.auth.GoogleAccountCredential;
+import com.google.api.client.googleapis.util.Utils;
 import com.google.api.client.json.gson.GsonFactory;
 import com.google.api.client.util.ExponentialBackOff;
 import com.google.api.services.drive.DriveScopes;
@@ -53,8 +55,10 @@ import com.namnoit.voicerecorder.ui.main.RecordingsFragment;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 
 public class MainActivity extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener {
@@ -73,7 +77,6 @@ public class MainActivity extends AppCompatActivity
     public static final String KEY_STATUS = "status";
     public static final int QUALITY_GOOD = 0;
     public static final int QUALITY_SMALL = 1;
-    public static final String KEY_FOLDER_ID = "folder_id";
     private static final String DIR = Environment.getExternalStorageDirectory().getAbsolutePath();
     private static final String APP_FOLDER = "Ez Voice Recorder";
     public static final String APP_DIR = DIR + File.separator + APP_FOLDER;
@@ -124,27 +127,16 @@ public class MainActivity extends AppCompatActivity
         super.onActivityResult(requestCode, resultCode, data);
         if (resultCode == Activity.RESULT_OK) {
             // Result returned from launching the Intent from GoogleSignInClient.getSignInIntent(...);
-            if (requestCode == BACKUP_SIGN_IN_REQUEST_CODE) {
+            if (requestCode == BACKUP_SIGN_IN_REQUEST_CODE || requestCode == RESTORE_SIGN_IN_REQUEST_CODE) {
                 Task<GoogleSignInAccount> task = GoogleSignIn.getSignedInAccountFromIntent(data);
                 try {
                     GoogleSignInAccount account = task.getResult(ApiException.class);
                     updateUI(account);
-                    sync(true);
+                    sync(requestCode == BACKUP_SIGN_IN_REQUEST_CODE);
                 } catch (ApiException e) {
                     updateUI(null);
                 }
             }
-            else if (requestCode == RESTORE_SIGN_IN_REQUEST_CODE) {
-                Task<GoogleSignInAccount> task = GoogleSignIn.getSignedInAccountFromIntent(data);
-                try {
-                    GoogleSignInAccount account = task.getResult(ApiException.class);
-                    updateUI(account);
-                    sync(false);
-                } catch (ApiException e) {
-                    updateUI(null);
-                }
-            }
-
         }
     }
 
@@ -159,8 +151,7 @@ public class MainActivity extends AppCompatActivity
         GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
 //                .requestIdToken("334025474902-3m9reou6lscdvh6j9egsp6e05cpld0m7.apps.googleusercontent.com")
                 .requestEmail()
-                .requestProfile()
-                .requestScopes(new Scope(Scopes.DRIVE_FILE),new Scope(Scopes.DRIVE_APPFOLDER))
+                .requestScopes(new Scope(DriveScopes.DRIVE_APPDATA),new Scope(DriveScopes.DRIVE_FILE))
                 .build();
         mGoogleSignInClient = GoogleSignIn.getClient(this, gso);
         pref = getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
@@ -208,6 +199,11 @@ public class MainActivity extends AppCompatActivity
         if (account != null){
             navProfileName.setText(account.getDisplayName());
             navEmail.setText(account.getEmail());
+
+
+
+
+
         }
         else{
             navProfileName.setText(getResources().getString(R.string.app_name));
@@ -314,7 +310,8 @@ public class MainActivity extends AppCompatActivity
             }
             else {
                 final GoogleAccountCredential credential = GoogleAccountCredential.usingOAuth2(
-                        getApplicationContext(), Collections.singleton(DriveScopes.DRIVE_FILE));
+//                        getApplicationContext(), Collections.singleton(DriveScopes.DRIVE_FILE));
+                        getApplicationContext(), Arrays.asList(DriveScopes.DRIVE_APPDATA,DriveScopes.DRIVE_FILE));
                 credential.setBackOff(new ExponentialBackOff());
                 credential.setSelectedAccount(account.getAccount());
 

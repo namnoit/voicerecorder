@@ -75,11 +75,12 @@
             <ImageView
                 android:id="@+id/line"
                 android:visibility="invisible"
-                android:layout_width="3dp"
+                android:layout_width="4dp"
                 android:layout_height="68dp"
                 android:layout_alignParentEnd="true"
                 android:layout_centerVertical="true"
-                app:srcCompat="@color/colorSync" />
+                app:srcCompat="@color/colorSync"
+                android:contentDescription="@string/drive_line_description" />
         </RelativeLayout>
 
     </androidx.cardview.widget.CardView>

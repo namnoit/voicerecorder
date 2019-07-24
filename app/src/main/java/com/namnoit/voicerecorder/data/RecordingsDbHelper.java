@@ -119,6 +119,37 @@ public class RecordingsDbHelper extends SQLiteOpenHelper {
         return recording;
     }
 
+    public Recording getRecordingWithHash(String hash){
+        SQLiteDatabase db = this.getReadableDatabase();
+        Cursor cursor = db.query(RecordingsContract.RecordingsEntry.TABLE_NAME,
+                new String[]{
+                        RecordingsContract.RecordingsEntry.COLUMN_ID,
+                        RecordingsContract.RecordingsEntry.COLUMN_NAME,
+                        RecordingsContract.RecordingsEntry.COLUMN_SIZE,
+                        RecordingsContract.RecordingsEntry.COLUMN_DURATION,
+                        RecordingsContract.RecordingsEntry.COLUMN_DATE,
+                        RecordingsContract.RecordingsEntry.COLUMN_MD5
+                },
+                RecordingsContract.RecordingsEntry.COLUMN_MD5+ " = ?",
+                new String[] {hash},
+                null,
+                null,
+                null);
+        Recording recording = null;
+        if (cursor.moveToLast()) {
+            recording = new Recording(
+                    cursor.getInt(cursor.getColumnIndex(RecordingsContract.RecordingsEntry.COLUMN_ID)),
+                    cursor.getString(cursor.getColumnIndex(RecordingsContract.RecordingsEntry.COLUMN_NAME)),
+                    cursor.getLong(cursor.getColumnIndex(RecordingsContract.RecordingsEntry.COLUMN_SIZE)),
+                    cursor.getInt(cursor.getColumnIndex(RecordingsContract.RecordingsEntry.COLUMN_DURATION)),
+                    cursor.getString(cursor.getColumnIndex(RecordingsContract.RecordingsEntry.COLUMN_DATE)),
+                    cursor.getString(cursor.getColumnIndex(RecordingsContract.RecordingsEntry.COLUMN_MD5)));
+        }
+        cursor.close();
+        db.close();
+        return recording;
+    }
+
     public void delete(int id){
         SQLiteDatabase db = this.getWritableDatabase();
         db.delete(RecordingsContract.RecordingsEntry.TABLE_NAME,
