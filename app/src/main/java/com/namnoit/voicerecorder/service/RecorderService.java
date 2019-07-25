@@ -45,7 +45,7 @@ public class RecorderService extends Service {
     public static final String BROADCAST_UPDATE_TIME = "RECORDING.UPDATE.TIME";
     public static final String AAC = "aac";
     public static final String THREE_GPP = "3gp";
-    public static final String CHANNEL_ID = "Voice_Recorder";
+    public static final String SERVICE_CHANNEL_ID = "Voice_Recorder_Service";
     long timeInMilliseconds = 0L;
     private MediaRecorder recorder;
     private String fileName = null;
@@ -178,14 +178,14 @@ public class RecorderService extends Service {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 NotificationManager manager = getSystemService(NotificationManager.class);
                 NotificationChannel serviceChannel = new NotificationChannel(
-                        CHANNEL_ID,
-                        getResources().getString(R.string.app_name),
+                        SERVICE_CHANNEL_ID,
+                        getResources().getString(R.string.service_channel),
                         NotificationManager.IMPORTANCE_LOW
                 );
                 manager.createNotificationChannel(serviceChannel);
             }
             Notification notification =
-                    new NotificationCompat.Builder(RecorderService.this, CHANNEL_ID)
+                    new NotificationCompat.Builder(RecorderService.this, SERVICE_CHANNEL_ID)
                             .setContentTitle(getText(R.string.notification_title_recording))
                             .setContentText(getText(R.string.notification_text_recording))
                             .setSmallIcon(R.drawable.ic_mic)

@@ -31,7 +31,7 @@ import com.google.api.client.googleapis.extensions.android.gms.auth.GoogleAccoun
 import com.google.api.client.json.gson.GsonFactory;
 import com.google.api.client.util.ExponentialBackOff;
 import com.google.api.services.drive.DriveScopes;
-import com.namnoit.voicerecorder.DriveChecker;
+import com.namnoit.voicerecorder.drive.DriveChecker;
 import com.namnoit.voicerecorder.MainActivity;
 import com.namnoit.voicerecorder.R;
 import com.namnoit.voicerecorder.RecordingsAdapter;
@@ -68,6 +68,8 @@ public class RecordingsFragment extends Fragment {
     public static final String BROADCAST_FILE_DOWNLOADED = "FILE_DOWNLOADED";
     public static final String BROADCAST_FILE_UPLOADED = "FILE_UPLOADED";
     public static final String BROADCAST_START_PLAYING = "START_PLAYING";
+    public static final String BROADCAST_SIGNED_OUT = "USER_SIGNED_OUT";
+    public static final String BROADCAST_SIGNED_IN = "USER_SIGNED_IN";
     public static final String BROADCAST_PAUSED = "PAUSED";
     public static final String KEY_CURRENT_POSITION = "current_position";
     public static final String KEY_DURATION = "duration";
@@ -83,73 +85,81 @@ public class RecordingsFragment extends Fragment {
     private BroadcastReceiver receiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            if (intent.getAction() != null &&
-                    intent.getAction().equals(RecorderService.BROADCAST_FINISH_RECORDING)) {
-                Recording r = db.getLast();
-                if (r != null) {
-                    list.add(0, r);
-                    recordingsAdapter.notifyItemInserted(0);
-                    recordingsAdapter.updateSelectedPosition();
-                    recordingsAdapter.notifyItemRangeChanged(1,recordingsAdapter.getItemCount());
-                    recyclerView.scrollToPosition(0);
+            if (intent.getAction() != null) {
+                if (intent.getAction().equals(RecorderService.BROADCAST_FINISH_RECORDING)) {
+                    Recording r = db.getLast();
+                    if (r != null) {
+                        list.add(0, r);
+                        recordingsAdapter.notifyItemInserted(0);
+                        recordingsAdapter.updateSelectedPosition();
+                        recordingsAdapter.notifyItemRangeChanged(1, recordingsAdapter.getItemCount());
+                        recyclerView.scrollToPosition(0);
+                    }
                 }
-            }
-            if (intent.getAction() != null &&
-                    intent.getAction().equals(BROADCAST_FILE_DOWNLOADED)){
-                Recording r = db.getRecordingWithHash(intent.getStringExtra(KEY_HASH_VALUE));
-                if (r != null) {
-                    r.setOnGoogleDrive(true);
-                    list.add(0, r);
-                    recordingsAdapter.notifyItemInserted(0);
-                    recordingsAdapter.updateSelectedPosition();
-                    recordingsAdapter.notifyItemRangeChanged(1,recordingsAdapter.getItemCount());
-                    recyclerView.scrollToPosition(0);
+                else if (intent.getAction().equals(BROADCAST_FILE_DOWNLOADED)) {
+                    Recording r = db.getRecordingWithHash(intent.getStringExtra(KEY_HASH_VALUE));
+                    if (r != null) {
+                        r.setOnGoogleDrive(true);
+                        list.add(0, r);
+                        recordingsAdapter.notifyItemInserted(0);
+                        recordingsAdapter.updateSelectedPosition();
+                        recordingsAdapter.notifyItemRangeChanged(1, recordingsAdapter.getItemCount());
+                        recyclerView.scrollToPosition(0);
+                    }
                 }
-            }
-            if (intent.getAction() != null &&
-                    intent.getAction().equals(BROADCAST_FILE_UPLOADED)){
-                int pos = intent.getIntExtra(KEY_POSITION,-1);
-                if (pos>=0 && pos<list.size()){
-                    list.get(pos).setOnGoogleDrive(true);
-                    recordingsAdapter.notifyItemChanged(pos);
+                else if (intent.getAction().equals(BROADCAST_FILE_UPLOADED)) {
+                    String hash = intent.getStringExtra(KEY_HASH_VALUE);
+                    for (int i = 0; i < list.size(); i++){
+                        if (list.get(i).getHashValue().equals(hash)) {
+                            list.get(i).setOnGoogleDrive(true);
+                            recordingsAdapter.notifyItemChanged(i);
+                        }
+                    }
                 }
-            }
-            if (intent.getAction() != null &&
-                    intent.getAction().equals(BROADCAST_START_PLAYING)) {
-                status = STATUS_PLAYING;
-                seekBar.setProgress(0);
-                playback.setVisibility(View.VISIBLE);
-                playback.setEnabled(true);
-                recordingName = intent.getStringExtra(KEY_FILE_NAME);
-                textTitle.setText(recordingName);
-                durationMillis = intent.getIntExtra(KEY_DURATION,0);
-                textDuration.setText(seconds2String(Math.round((float)durationMillis/1000)));
-                playRecordingButton.setImageResource(R.drawable.ic_pause_white);
-            }
-            if (intent.getAction() != null &&
-                    intent.getAction().equals(BROADCAST_UPDATE_SEEKBAR)) {
-                if (status != STATUS_PLAYING){
+                else if (intent.getAction().equals(BROADCAST_SIGNED_OUT)) {
+                    for (int i = 0; i<list.size();i++){
+                        if (list.get(i).isOnGoogleDrive()){
+                            list.get(i).setOnGoogleDrive(false);
+                            recordingsAdapter.notifyItemChanged(i);
+                        }
+                    }
+                }
+                else if (intent.getAction().equals(BROADCAST_SIGNED_IN)) {
+                    updateUI();
+                }
+                else if (intent.getAction().equals(BROADCAST_START_PLAYING)) {
                     status = STATUS_PLAYING;
+                    seekBar.setProgress(0);
+                    playback.setVisibility(View.VISIBLE);
+                    playback.setEnabled(true);
+                    recordingName = intent.getStringExtra(KEY_FILE_NAME);
+                    textTitle.setText(recordingName);
+                    durationMillis = intent.getIntExtra(KEY_DURATION, 0);
+                    textDuration.setText(seconds2String(Math.round((float) durationMillis / 1000)));
                     playRecordingButton.setImageResource(R.drawable.ic_pause_white);
                 }
-                curMillis = intent.getIntExtra(KEY_CURRENT_POSITION,0);
-                seekBar.setProgress(curMillis*100/durationMillis);
-                textCurrentPosition.setText(seconds2String(Math.round((float)curMillis/1000)));
-            }
-            if (intent.getAction() != null &&
-                    intent.getAction().equals(BROADCAST_FINISH_PLAYING)) {
-                seekBar.setProgress(100);
-                status = STATUS_STOPPED;
-                textCurrentPosition.setText("00:00:00");
-                textDuration.setText("00:00:00");
-                playback.setVisibility(View.INVISIBLE);
-                playback.setEnabled(false);
-                vto.dispatchOnGlobalLayout();
-            }
-            if (intent.getAction() != null &&
-                    intent.getAction().equals(BROADCAST_PAUSED)) {
-                status = STATUS_PAUSED;
-                playRecordingButton.setImageResource(R.drawable.ic_play);
+                else if (intent.getAction().equals(BROADCAST_UPDATE_SEEKBAR)) {
+                    if (status != STATUS_PLAYING) {
+                        status = STATUS_PLAYING;
+                        playRecordingButton.setImageResource(R.drawable.ic_pause_white);
+                    }
+                    curMillis = intent.getIntExtra(KEY_CURRENT_POSITION, 0);
+                    seekBar.setProgress(curMillis * 100 / durationMillis);
+                    textCurrentPosition.setText(seconds2String(Math.round((float) curMillis / 1000)));
+                }
+                else if (intent.getAction().equals(BROADCAST_FINISH_PLAYING)) {
+                    seekBar.setProgress(100);
+                    status = STATUS_STOPPED;
+                    textCurrentPosition.setText("00:00:00");
+                    textDuration.setText("00:00:00");
+                    playback.setVisibility(View.INVISIBLE);
+                    playback.setEnabled(false);
+                    vto.dispatchOnGlobalLayout();
+                }
+                else if (intent.getAction().equals(BROADCAST_PAUSED)) {
+                    status = STATUS_PAUSED;
+                    playRecordingButton.setImageResource(R.drawable.ic_play);
+                }
             }
         }
     };
@@ -161,6 +171,8 @@ public class RecordingsFragment extends Fragment {
     @Override
     public void onResume() {
         super.onResume();
+        LocalBroadcastManager.getInstance(requireContext()).registerReceiver(receiver,
+                new IntentFilter(RecordingsFragment.BROADCAST_SIGNED_IN));
         LocalBroadcastManager.getInstance(requireContext()).registerReceiver(receiver,
                 new IntentFilter(RecorderService.BROADCAST_FINISH_RECORDING));
         LocalBroadcastManager.getInstance(requireContext()).registerReceiver(receiver,
@@ -175,6 +187,10 @@ public class RecordingsFragment extends Fragment {
                 new IntentFilter(RecordingsFragment.BROADCAST_FILE_DOWNLOADED));
         LocalBroadcastManager.getInstance(requireContext()).registerReceiver(receiver,
                 new IntentFilter(RecordingsFragment.BROADCAST_FILE_UPLOADED));
+        LocalBroadcastManager.getInstance(requireContext()).registerReceiver(receiver,
+                new IntentFilter(RecordingsFragment.BROADCAST_SIGNED_OUT));
+
+
         status = pref.getInt(MainActivity.KEY_STATUS,STATUS_STOPPED);
         if (!isServiceRunning(RecordingPlaybackService.class)){
             status = STATUS_STOPPED;
@@ -196,7 +212,6 @@ public class RecordingsFragment extends Fragment {
             textDuration.setText(seconds2String(Math.round((float)pref.getInt(KEY_DURATION,0)/1000)));
             playRecordingButton.setImageResource(R.drawable.ic_pause_white);
         }
-
     }
 
     @Override
@@ -228,12 +243,10 @@ public class RecordingsFragment extends Fragment {
 
             @Override
             public void onStartTrackingTouch(SeekBar seekBar) {
-
             }
 
             @Override
             public void onStopTrackingTouch(SeekBar seekBar) {
-
             }
         });
         textTitle = view.findViewById(R.id.recordingTitle);
@@ -276,7 +289,7 @@ public class RecordingsFragment extends Fragment {
         recyclerView.setAdapter(recordingsAdapter);
         playback = view.findViewById(R.id.playback);
 
-        updateUI();
+//        updateUI();
 
         vto = playback.getViewTreeObserver();
         vto.addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {

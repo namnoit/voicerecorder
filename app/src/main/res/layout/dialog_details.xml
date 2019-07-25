@@ -150,4 +150,15 @@
         android:layout_toEndOf="@id/image_details_format"
         android:text="@string/format"
         android:textSize="18sp" />
+
+    <ImageView
+        android:id="@+id/image_drive"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:scaleY="0.5"
+        android:scaleX="0.5"
+        android:layout_alignParentEnd="true"
+        android:layout_marginEnd="10dp"
+        app:srcCompat="@drawable/drive" />
 </RelativeLayout>

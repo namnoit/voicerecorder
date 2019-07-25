@@ -3,6 +3,7 @@ package com.namnoit.voicerecorder;
 import android.Manifest;
 import android.app.Activity;
 import android.app.ActivityManager;
+import android.app.Dialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -12,10 +13,12 @@ import android.net.ConnectivityManager;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
-import android.util.Log;
+import android.os.Handler;
+import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -28,25 +31,26 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.core.view.GravityCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.viewpager.widget.ViewPager;
 
 import com.google.android.gms.auth.api.signin.GoogleSignIn;
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
 import com.google.android.gms.auth.api.signin.GoogleSignInClient;
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
-import com.google.android.gms.common.Scopes;
 import com.google.android.gms.common.api.ApiException;
 import com.google.android.gms.common.api.Scope;
+import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import com.google.android.material.navigation.NavigationView;
 import com.google.android.material.snackbar.Snackbar;
 import com.google.android.material.tabs.TabLayout;
 import com.google.api.client.extensions.android.http.AndroidHttp;
 import com.google.api.client.googleapis.extensions.android.gms.auth.GoogleAccountCredential;
-import com.google.api.client.googleapis.util.Utils;
 import com.google.api.client.json.gson.GsonFactory;
 import com.google.api.client.util.ExponentialBackOff;
 import com.google.api.services.drive.DriveScopes;
+import com.namnoit.voicerecorder.drive.DriveServiceHelper;
 import com.namnoit.voicerecorder.service.RecorderService;
 import com.namnoit.voicerecorder.service.RecordingPlaybackService;
 import com.namnoit.voicerecorder.ui.main.PagerAdapter;
@@ -56,9 +60,7 @@ import com.namnoit.voicerecorder.ui.main.RecordingsFragment;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
-import java.util.Set;
 
 public class MainActivity extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener {
@@ -69,7 +71,7 @@ public class MainActivity extends AppCompatActivity
             Manifest.permission.READ_EXTERNAL_STORAGE
     };
     private static final int PERMISSION_REQUEST_CODE = 100;
-    private static final int DRIVE_PERMISSIONS_REQUEST_CODE = 101;
+    private static final int SIGN_IN_REQUEST_CODE = 101;
     private static int BACKUP_SIGN_IN_REQUEST_CODE = 102;
     private static int RESTORE_SIGN_IN_REQUEST_CODE = 103;
     public static final String PREF_NAME = "config";
@@ -126,6 +128,7 @@ public class MainActivity extends AppCompatActivity
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (resultCode == Activity.RESULT_OK) {
+
             // Result returned from launching the Intent from GoogleSignInClient.getSignInIntent(...);
             if (requestCode == BACKUP_SIGN_IN_REQUEST_CODE || requestCode == RESTORE_SIGN_IN_REQUEST_CODE) {
                 Task<GoogleSignInAccount> task = GoogleSignIn.getSignedInAccountFromIntent(data);
@@ -133,6 +136,16 @@ public class MainActivity extends AppCompatActivity
                     GoogleSignInAccount account = task.getResult(ApiException.class);
                     updateUI(account);
                     sync(requestCode == BACKUP_SIGN_IN_REQUEST_CODE);
+                } catch (ApiException e) {
+                    updateUI(null);
+                }
+            }
+            else if (requestCode == SIGN_IN_REQUEST_CODE){
+                Task<GoogleSignInAccount> task = GoogleSignIn.getSignedInAccountFromIntent(data);
+                try {
+                    GoogleSignInAccount account = task.getResult(ApiException.class);
+                    updateUI(account);
+
                 } catch (ApiException e) {
                     updateUI(null);
                 }
@@ -199,10 +212,14 @@ public class MainActivity extends AppCompatActivity
         if (account != null){
             navProfileName.setText(account.getDisplayName());
             navEmail.setText(account.getEmail());
-
-
-
-
+            Handler handler = new Handler();
+            handler.postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    Intent broadcast = new Intent(RecordingsFragment.BROADCAST_SIGNED_IN);
+                    LocalBroadcastManager.getInstance(MainActivity.this).sendBroadcast(broadcast);
+                }
+            },500);
 
         }
         else{
@@ -273,6 +290,61 @@ public class MainActivity extends AppCompatActivity
                     .create();
             qualityDialog.show();
 
+        }
+        else if (id == R.id.nav_account) {
+            drawer.closeDrawer(GravityCompat.START,false);
+            GoogleSignInAccount account = GoogleSignIn.getLastSignedInAccount(this);
+            AlertDialog.Builder dialogBuilder = new AlertDialog.Builder(MainActivity.this);
+            LayoutInflater inflater = LayoutInflater.from(MainActivity.this);
+            View convertView = inflater.inflate(R.layout.dialog_account, null);
+            TextView textAccountName = convertView.findViewById(R.id.textAccountName);
+            TextView textAccountEmail = convertView.findViewById(R.id.textAccountEmail);
+            if (account == null){
+                textAccountName.setText(R.string.not_signed_in);
+                textAccountEmail.setText("");
+            }
+            else{
+                textAccountName.setText(account.getDisplayName());
+                textAccountEmail.setText(account.getEmail());
+            }
+            final Dialog dialog = dialogBuilder.setView(convertView)
+                    .setTitle(R.string.account)
+                    .setNeutralButton(account==null?R.string.sign_in:R.string.switch_account, new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialogInterface, int i) {
+                            if (isInternetAvailable()){
+                                mGoogleSignInClient.signOut().addOnCompleteListener(new OnCompleteListener<Void>() {
+                                    @Override
+                                    public void onComplete(@NonNull Task<Void> task) {
+                                        Intent signInIntent = mGoogleSignInClient.getSignInIntent();
+                                        startActivityForResult(signInIntent, SIGN_IN_REQUEST_CODE);
+                                    }
+                                });
+
+                            }
+                        }
+                    })
+                    .setNegativeButton(R.string.sign_out, new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialogInterface, int i) {
+                            mGoogleSignInClient.signOut().addOnCompleteListener(new OnCompleteListener<Void>() {
+                                @Override
+                                public void onComplete(@NonNull Task<Void> task) {
+                                    updateUI(null);
+                                    Intent broadcast = new Intent(RecordingsFragment.BROADCAST_SIGNED_OUT);
+                                    LocalBroadcastManager.getInstance(MainActivity.this).sendBroadcast(broadcast);
+                                }
+                            });
+                        }
+                    })
+                    .setPositiveButton(R.string.cancel, new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialogInterface, int i) {
+
+                        }
+                    })
+                    .create();
+            dialog.show();
         }
         else if (id == R.id.nav_backup) {
             sync(true);

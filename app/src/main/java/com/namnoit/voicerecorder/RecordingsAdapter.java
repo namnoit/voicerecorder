@@ -107,7 +107,7 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
         holder.itemView.setOnLongClickListener(new View.OnLongClickListener() {
             @Override
             public boolean onLongClick(View view) {
-
+                Toast.makeText(context,Integer.toString(position),Toast.LENGTH_SHORT).show();
                 return true;
             }
         });
@@ -119,7 +119,7 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
                 LayoutInflater inflater = LayoutInflater.from(context);
                 View convertView = inflater.inflate(R.layout.dialog_menu, null);
                 ListView lv = convertView.findViewById(R.id.listView);
-                ListDialogAdapter listAdapter = new ListDialogAdapter(context);
+                final ListDialogAdapter listAdapter = new ListDialogAdapter(context);
                 lv.setAdapter(listAdapter);
                 lv.setDividerHeight(0);
                 dialogBuilder.setTitle(holder.textName.getText())
@@ -219,6 +219,11 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
                                     textFormat.setText(context.getResources().getString(R.string.quality_good));
                                 } else
                                     textFormat.setText(context.getResources().getString(R.string.quality_small));
+                                // On Drive
+                                ImageView drive = detailsDialogLayout.findViewById(R.id.image_drive);
+                                if (recordingsList.get(position).isOnGoogleDrive())
+                                    drive.setVisibility(View.VISIBLE);
+                                else drive.setVisibility(View.INVISIBLE);
                                 detailBuilder.setView(detailsDialogLayout)
                                         .setPositiveButton(R.string.ok, new DialogInterface.OnClickListener() {
                                             @Override

@@ -57,5 +57,13 @@
     <string name="notification_text_uploaded">File uploaded</string>
     <string name="notification_text_downloaded">File downloaded</string>
     <string name="drive_line_description">To show if this file is on Google Drive</string>
+    <string name="service_channel">Ez Voice Recorder Service</string>
+    <string name="alert_channel">Ez Voice Recorder alert</string>
+    <string name="account">Account</string>
+    <string name="sign_in">Sign in</string>
+    <string name="sign_out">Sign out</string>
+    <string name="switch_account">Switch account</string>
+    <string name="not_signed_in">Your are not signed in</string>
+    <string name="files_up_to_date">All files are up-to-date</string>
 </resources>
 

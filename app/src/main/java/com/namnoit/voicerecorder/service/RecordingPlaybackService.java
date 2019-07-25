@@ -34,7 +34,6 @@ public class RecordingPlaybackService extends Service {
     private Intent broadcastFinishPlaying = new Intent(RecordingsFragment.BROADCAST_FINISH_PLAYING);
     private Intent broadcastStartPlaying = new Intent(RecordingsFragment.BROADCAST_START_PLAYING);
     private Intent broadcastPaused = new Intent(RecordingsFragment.BROADCAST_PAUSED);
-    private static final String CHANNEL_ID = "Voice_Recorder_Playback";
     public static final String ACTION_PLAY = "PLAY";
     public static final String ACTION_PAUSE = "PAUSE";
     public static final String ACTION_RESUME = "RESUME";
@@ -154,8 +153,8 @@ public class RecordingPlaybackService extends Service {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationManager manager = getSystemService(NotificationManager.class);
             NotificationChannel serviceChannel = new NotificationChannel(
-                    CHANNEL_ID,
-                    "Recordings Playback",
+                    RecorderService.SERVICE_CHANNEL_ID,
+                    getResources().getString(R.string.service_channel),
                     NotificationManager.IMPORTANCE_LOW
             );
             manager.createNotificationChannel(serviceChannel);
@@ -172,7 +171,7 @@ public class RecordingPlaybackService extends Service {
         stopIntent.setAction(ACTION_STOP_SERVICE);
         PendingIntent stopPendingIntent = PendingIntent.getService(this, 0, stopIntent, PendingIntent.FLAG_CANCEL_CURRENT);
 
-        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, RecorderService.SERVICE_CHANNEL_ID)
                 .setContentTitle(fileName)
                 .setSmallIcon(R.drawable.ic_play)
                 .setContentIntent(pendingIntent)
