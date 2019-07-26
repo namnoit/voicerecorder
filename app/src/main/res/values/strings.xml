@@ -12,9 +12,6 @@
     <string name="delete_title">Delete the recording?</string>
     <string name="will_be_deleted">will be deleted</string>
     <string name="menu_quality">Quality</string>
-    <string name="menu_gallery">Gallery</string>
-    <string name="menu_slideshow">Slideshow</string>
-    <string name="menu_tools">Tools</string>
     <string name="menu_share">Share</string>
 
     <string name="tab_record">Record</string>
@@ -65,5 +62,7 @@
     <string name="switch_account">Switch account</string>
     <string name="not_signed_in">Your are not signed in</string>
     <string name="files_up_to_date">All files are up-to-date</string>
+    <string name="sync">Sync now</string>
+    <string name="on_drive">On Google Drive</string>
 </resources>
 

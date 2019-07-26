@@ -18,7 +18,6 @@ import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -45,12 +44,7 @@ import com.google.android.gms.tasks.Task;
 import com.google.android.material.navigation.NavigationView;
 import com.google.android.material.snackbar.Snackbar;
 import com.google.android.material.tabs.TabLayout;
-import com.google.api.client.extensions.android.http.AndroidHttp;
-import com.google.api.client.googleapis.extensions.android.gms.auth.GoogleAccountCredential;
-import com.google.api.client.json.gson.GsonFactory;
-import com.google.api.client.util.ExponentialBackOff;
 import com.google.api.services.drive.DriveScopes;
-import com.namnoit.voicerecorder.drive.DriveServiceHelper;
 import com.namnoit.voicerecorder.service.RecorderService;
 import com.namnoit.voicerecorder.service.RecordingPlaybackService;
 import com.namnoit.voicerecorder.ui.main.PagerAdapter;
@@ -59,7 +53,6 @@ import com.namnoit.voicerecorder.ui.main.RecordingsFragment;
 
 import java.io.File;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity
@@ -85,7 +78,6 @@ public class MainActivity extends AppCompatActivity
     private SharedPreferences pref;
     private int qualityChosen;
     private TextView navEmail, navProfileName;
-    private DriveServiceHelper mDriveServiceHelper;
     private GoogleSignInClient mGoogleSignInClient;
     //334025474902-ih2iogepn7f0na08cuh0706fitjrsqv9.apps.googleusercontent.com
 
@@ -128,7 +120,6 @@ public class MainActivity extends AppCompatActivity
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (resultCode == Activity.RESULT_OK) {
-
             // Result returned from launching the Intent from GoogleSignInClient.getSignInIntent(...);
             if (requestCode == BACKUP_SIGN_IN_REQUEST_CODE || requestCode == RESTORE_SIGN_IN_REQUEST_CODE) {
                 Task<GoogleSignInAccount> task = GoogleSignIn.getSignedInAccountFromIntent(data);
@@ -145,7 +136,6 @@ public class MainActivity extends AppCompatActivity
                 try {
                     GoogleSignInAccount account = task.getResult(ApiException.class);
                     updateUI(account);
-
                 } catch (ApiException e) {
                     updateUI(null);
                 }
@@ -212,15 +202,6 @@ public class MainActivity extends AppCompatActivity
         if (account != null){
             navProfileName.setText(account.getDisplayName());
             navEmail.setText(account.getEmail());
-            Handler handler = new Handler();
-            handler.postDelayed(new Runnable() {
-                @Override
-                public void run() {
-                    Intent broadcast = new Intent(RecordingsFragment.BROADCAST_SIGNED_IN);
-                    LocalBroadcastManager.getInstance(MainActivity.this).sendBroadcast(broadcast);
-                }
-            },500);
-
         }
         else{
             navProfileName.setText(getResources().getString(R.string.app_name));
@@ -331,8 +312,14 @@ public class MainActivity extends AppCompatActivity
                                 @Override
                                 public void onComplete(@NonNull Task<Void> task) {
                                     updateUI(null);
-                                    Intent broadcast = new Intent(RecordingsFragment.BROADCAST_SIGNED_OUT);
-                                    LocalBroadcastManager.getInstance(MainActivity.this).sendBroadcast(broadcast);
+                                    Handler handler = new Handler();
+                                    handler.postDelayed(new Runnable() {
+                                        @Override
+                                        public void run() {
+                                            Intent broadcast = new Intent(RecordingsFragment.BROADCAST_SIGNED_OUT);
+                                            LocalBroadcastManager.getInstance(MainActivity.this).sendBroadcast(broadcast);
+                                        }
+                                    },500);
                                 }
                             });
                         }
@@ -346,10 +333,10 @@ public class MainActivity extends AppCompatActivity
                     .create();
             dialog.show();
         }
-        else if (id == R.id.nav_backup) {
+        else if (id == R.id.nav_backup){
             sync(true);
         }
-        else if (id ==R.id.nav_restore){
+        else if (id == R.id.nav_sync) {
             sync(false);
         }
         else if (id == R.id.nav_rate) {
@@ -373,7 +360,7 @@ public class MainActivity extends AppCompatActivity
         return true;
     }
 
-    private void sync(boolean backup) {
+    private void sync(final boolean backup) {
         if (isInternetAvailable()) {
             GoogleSignInAccount account = GoogleSignIn.getLastSignedInAccount(this);
             if (account == null) {
@@ -381,23 +368,15 @@ public class MainActivity extends AppCompatActivity
                 startActivityForResult(signInIntent, backup ? BACKUP_SIGN_IN_REQUEST_CODE : RESTORE_SIGN_IN_REQUEST_CODE);
             }
             else {
-                final GoogleAccountCredential credential = GoogleAccountCredential.usingOAuth2(
-//                        getApplicationContext(), Collections.singleton(DriveScopes.DRIVE_FILE));
-                        getApplicationContext(), Arrays.asList(DriveScopes.DRIVE_APPDATA,DriveScopes.DRIVE_FILE));
-                credential.setBackOff(new ExponentialBackOff());
-                credential.setSelectedAccount(account.getAccount());
+                Handler handler = new Handler();
+                handler.postDelayed(new Runnable() {
+                    @Override
+                    public void run() {
+                        Intent broadcast = new Intent(backup?RecordingsFragment.BROADCAST_BACKUP_REQUEST:RecordingsFragment.BROADCAST_SYNC_REQUEST);
+                        LocalBroadcastManager.getInstance(MainActivity.this).sendBroadcast(broadcast);
+                    }
+                },500);
 
-                final com.google.api.services.drive.Drive googleDriveService =
-                        new com.google.api.services.drive.Drive.Builder(
-                                AndroidHttp.newCompatibleTransport(),
-                                new GsonFactory(),
-                                credential)
-                                .setApplicationName(getResources().getString(R.string.app_name))
-                                .build();
-                if (mDriveServiceHelper == null)
-                    mDriveServiceHelper = new DriveServiceHelper(getApplicationContext(), googleDriveService);
-                if (backup) mDriveServiceHelper.backUp();
-                else mDriveServiceHelper.restore();
             }
 
         }

@@ -1,6 +1,5 @@
 package com.namnoit.voicerecorder.drive;
 
-
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -9,7 +8,6 @@ import android.content.Intent;
 import android.media.MediaMetadataRetriever;
 import android.os.Build;
 import android.os.Handler;
-import android.os.Looper;
 import android.widget.Toast;
 
 import androidx.core.app.NotificationCompat;
@@ -22,9 +20,9 @@ import com.google.api.services.drive.Drive;
 import com.google.api.services.drive.model.FileList;
 import com.namnoit.voicerecorder.MainActivity;
 import com.namnoit.voicerecorder.R;
+import com.namnoit.voicerecorder.RecordingsAdapter;
 import com.namnoit.voicerecorder.data.Recording;
 import com.namnoit.voicerecorder.data.RecordingsDbHelper;
-import com.namnoit.voicerecorder.service.RecorderService;
 import com.namnoit.voicerecorder.ui.main.RecordingsFragment;
 
 import org.json.JSONException;
@@ -64,11 +62,15 @@ public class DriveServiceHelper {
     private Context context;
     private ExecutorService executor;
     private Drive mDriveService;
+    private ArrayList<Recording> localList;
+    private RecordingsAdapter adapter;
     private RecordingsDbHelper db;
-    public DriveServiceHelper(Context c, Drive drive){
+    public DriveServiceHelper(Context c, Drive drive, ArrayList<Recording> list,RecordingsAdapter adapter){
         context = c;
-        executor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+//        executor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
         mDriveService = drive;
+        localList = list;
+        this.adapter = adapter;
         db = new RecordingsDbHelper(context);
         NOTIFICATION_ID = 100;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -82,11 +84,7 @@ public class DriveServiceHelper {
         }
     }
 
-    private class CreateFolderRunnable implements Runnable {
-        private boolean backup;
-        private CreateFolderRunnable(boolean backup){
-            this.backup = backup;
-        }
+    private Runnable backUpRunnable = new Runnable(){
         @Override
         public void run() {
             String folderId = "";
@@ -143,7 +141,7 @@ public class DriveServiceHelper {
 
                     JSONObject json = new JSONObject();
                     json.put(FOLDER_ID, folderId = folder.getId());
-                    FileWriter fileWriter = new FileWriter( context.getCacheDir() + File.separator + CONFIG_FILE);
+                    FileWriter fileWriter = new FileWriter(context.getCacheDir() + File.separator + CONFIG_FILE);
                     fileWriter.write(json.toString());
                     fileWriter.close();
 
@@ -155,8 +153,7 @@ public class DriveServiceHelper {
                     mDriveService.files().create(fileMetadataJson, jsonContent)
                             .setFields("id")
                             .execute();
-                }
-                catch (UserRecoverableAuthIOException e) {
+                } catch (UserRecoverableAuthIOException e) {
                     Intent errorIntent = e.getIntent();
                     errorIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                     context.startActivity(errorIntent);
@@ -198,72 +195,42 @@ public class DriveServiceHelper {
             ArrayList<Recording> localList = db.getAll();
             // localList: Files in local
             // driveList: Files in Google Drive
-            if (backup) {
-
-
-                for (Recording recording : localList) {
-                    boolean exist = false;
-                    for (com.google.api.services.drive.model.File driveFile : driveList) {
-                        if (driveFile.getName().equals(recording.getName())) {
-                            exist = true;
-                            break;
-                        }
-                    }
-                    if (!exist) {
-                        UploadThread uploadThread = new UploadThread(recording.getName(), folderId,recording.getHashValue());
-                        executor.execute(uploadThread);
-                    }
-                }
-//                if (position==-1){
-//                    Handler handler = new Handler(Looper.getMainLooper());
-//                    handler.post(new Runnable() {
-//                        @Override
-//                        public void run() {
-//                            Toast.makeText(context,R.string.files_up_to_date,Toast.LENGTH_SHORT).show();
-//                        }
-//                    });
-//                }
-            }
-            else {
-                boolean downloaded = false;
+            for (Recording recording : localList) {
+                boolean exist = false;
                 for (com.google.api.services.drive.model.File driveFile : driveList) {
-                    boolean exist = false;
-                    for (Recording recording : localList) {
-                        if (recording.getName().equals(driveFile.getName())){
-                            exist = true;
-                            break;
-                        }
-                    }
-                    if (!exist){
-                        downloaded = true;
-                        DownLoadThread downLoadThread = new DownLoadThread(driveFile.getId(),driveFile.getName());
-                        executor.execute(downLoadThread);
+                    if (driveFile.getName().equals(recording.getName())) {
+                        exist = true;
+                        break;
                     }
                 }
-                if(!downloaded){
-                    Handler handler = new Handler(Looper.getMainLooper());
-                    handler.post(new Runnable() {
-                        @Override
-                        public void run() {
-                            Toast.makeText(context,R.string.files_up_to_date,Toast.LENGTH_SHORT).show();
-                        }
-                    });
+                if (!exist) {
+                    UploadThread uploadThread = new UploadThread(recording.getName(), folderId, recording.getHashValue());
+                    executor.execute(uploadThread);
                 }
             }
+            executor.shutdown();
         }
-    }
+    };
 
 
     public void backUp() {
-        CreateFolderRunnable runnable = new CreateFolderRunnable(true);
-        executor.execute(runnable);
+        executor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+        executor.execute(backUpRunnable);
     }
 
-    public void restore(){
-        CreateFolderRunnable runnable = new CreateFolderRunnable(false);
-        executor.execute(runnable);
+
+    public void sync(){
+        executor = Executors.newSingleThreadExecutor();
+        executor.execute(syncRunnable);
+        executor.shutdown();
     }
 
+    public void downloadFile(String fileId, String fileName){
+        DownLoadThread thread = new DownLoadThread(fileId,fileName);
+        executor = Executors.newSingleThreadExecutor();
+        executor.execute(thread);
+        executor.shutdown();
+    }
 
 
     private class UploadThread implements Runnable{
@@ -364,6 +331,7 @@ public class DriveServiceHelper {
                 notificationManager.notify(++NOTIFICATION_ID,notification);
                 Intent broadcast = new Intent(RecordingsFragment.BROADCAST_FILE_DOWNLOADED);
                 broadcast.putExtra(RecordingsFragment.KEY_HASH_VALUE,hashValue);
+                broadcast.putExtra(RecordingsFragment.KEY_FILE_NAME,fileName);
                 db.insert(fileName, file.length(), Integer.parseInt(duration), formattedDate, hashValue);
                 LocalBroadcastManager.getInstance(context).sendBroadcast(broadcast);
             } catch (NoSuchAlgorithmException e) {
@@ -378,4 +346,92 @@ public class DriveServiceHelper {
 
         }
     }
+
+    private Runnable syncRunnable = new Runnable() {
+        @Override
+        public void run() {
+            String folderId = "";
+            FileList filesAppData;
+            try {
+                filesAppData = mDriveService.files().list()
+                        .setSpaces("appDataFolder")
+                        .setFields("nextPageToken, files(id, name)")
+                        .setPageSize(10)
+                        .execute();
+                for (com.google.api.services.drive.model.File file : filesAppData.getFiles()) {
+                    if (file.getName().equals(CONFIG_FILE)) {
+                        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+
+                        mDriveService.files().get(file.getId())
+                                .executeMediaAndDownloadTo(outputStream);
+                        byte[] byteArray = outputStream.toByteArray();
+                        JSONObject json = new JSONObject(new String(byteArray));
+                        folderId = json.getString(FOLDER_ID);
+                        break;
+                    }
+                }
+            } catch (UserRecoverableAuthIOException e) {
+                return;
+            } catch (IOException e) {
+                e.printStackTrace();
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+
+            // List of files in Google Drive folder
+            List<com.google.api.services.drive.model.File> driveList = new ArrayList<>();
+            // Folder has not been created yet, create new folder
+            if (!folderId.equals("")) {
+                try {
+                    Drive.Files.List request = mDriveService.files().list()
+                            .setFields("nextPageToken, files")
+                            .setQ("trashed = false and '" + folderId + "' in parents")
+                            .setPageSize(1000);
+                    do {
+                        FileList files = request.execute();
+                        driveList.addAll(files.getFiles());
+                        request.setPageToken(files.getNextPageToken());
+                    }
+                    while (request.getPageToken() != null &&
+                            request.getPageToken().length() > 0);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+
+                for (com.google.api.services.drive.model.File driveFile : driveList) {
+                    boolean exist = false;
+                    for (int i = 0; i < localList.size(); i++) {
+                        final int pos = i;
+                        if (localList.get(i).getName().equals(driveFile.getName())) {
+                            exist = true;
+                            if (localList.get(i).getLocation() == Recording.LOCATION_ON_PHONE) {
+                                localList.get(i).setLocation(Recording.LOCATION_PHONE_DRIVE);
+                                Handler handler = new Handler(context.getMainLooper());
+                                handler.post(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        adapter.notifyItemChanged(pos);
+                                    }
+                                });
+                                break;
+                            }
+                        }
+                    }
+                    // File is on remote
+                    if (!exist){
+                        Recording r = new Recording(-1,driveFile.getName(),driveFile.getSize(),0,"",driveFile.getId());
+                        r.setLocation(Recording.LOCATION_ON_DRIVE);
+                        localList.add(localList.size(),r);
+                        Handler handler = new Handler(context.getMainLooper());
+                        handler.postDelayed(new Runnable() {
+                            @Override
+                            public void run() {
+                                adapter.notifyItemInserted(localList.size());
+                            }
+                        },0);
+                    }
+                }
+            }
+        }
+    };
 }

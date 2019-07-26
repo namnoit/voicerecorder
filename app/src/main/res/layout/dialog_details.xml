@@ -155,10 +155,18 @@
         android:id="@+id/image_drive"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="2dp"
+        android:layout_marginTop="3dp"
+        android:layout_toStartOf="@id/image_local"
         android:scaleY="0.5"
         android:scaleX="0.5"
-        android:layout_alignParentEnd="true"
-        android:layout_marginEnd="10dp"
         app:srcCompat="@drawable/drive" />
+
+    <ImageView
+        android:id="@+id/image_local"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="15dp"
+        android:layout_marginEnd="10dp"
+        android:layout_alignParentEnd="true"
+        app:srcCompat="@drawable/ic_phone" />
 </RelativeLayout>

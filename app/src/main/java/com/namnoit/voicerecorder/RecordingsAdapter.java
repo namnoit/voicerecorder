@@ -21,9 +21,11 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.recyclerview.widget.RecyclerView;
 import com.namnoit.voicerecorder.data.Recording;
 import com.namnoit.voicerecorder.data.RecordingsDbHelper;
+import com.namnoit.voicerecorder.drive.DriveServiceHelper;
 import com.namnoit.voicerecorder.service.RecorderService;
 import com.namnoit.voicerecorder.service.RecordingPlaybackService;
 import com.namnoit.voicerecorder.ui.main.RecordingsFragment;
@@ -67,22 +69,39 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
     @Override
     public void onBindViewHolder(@NonNull final ViewHolder holder, final int position) {
         holder.textName.setText(recordingsList.get(position).getName());
-        final int seconds = Math.round((float)recordingsList.get(position).getDuration()/1000);
-        long s = seconds % 60;
-        long m = (seconds / 60) % 60;
-        long h = (seconds / (60 * 60)) % 24;
-        final String dur = String.format(Locale.getDefault(),"%02d:%02d:%02d",h,m,s);
-        holder.textDuration.setText(dur);
-        holder.textDate.setText(recordingsList.get(position).getDate());
-        if (recordingsList.get(position).isOnGoogleDrive()){
+        if (recordingsList.get(position).getLocation()!=Recording.LOCATION_ON_DRIVE) {
+            final int seconds = Math.round((float) recordingsList.get(position).getDuration() / 1000);
+            long s = seconds % 60;
+            long m = (seconds / 60) % 60;
+            long h = (seconds / (60 * 60)) % 24;
+            final String dur = String.format(Locale.getDefault(), "%02d:%02d:%02d", h, m, s);
+            holder.textDuration.setText(dur);
+            holder.textDate.setVisibility(View.VISIBLE);
+            holder.textDate.setText(recordingsList.get(position).getDate());
             holder.line.setVisibility(View.VISIBLE);
-        }else holder.line.setVisibility(View.INVISIBLE);
+            holder.buttonMore.setImageResource(R.drawable.ic_more);
+        } else{
+            holder.textDuration.setText(R.string.on_drive);
+            holder.textDate.setVisibility(View.INVISIBLE);
+            holder.line.setVisibility(View.INVISIBLE);
+            holder.buttonMore.setImageResource(R.drawable.ic_download);
+        }
+
         if (position == selectedPosition) holder.icon.setImageResource(R.drawable.ic_play_red);
         else holder.icon.setImageResource(R.drawable.ic_mic);
-
+        holder.itemView.setEnabled(true);
+        holder.buttonMore.setEnabled(true);
         holder.itemView.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                if (recordingsList.get(position).getLocation()==Recording.LOCATION_ON_DRIVE){
+                    holder.itemView.setEnabled(false);
+                    Intent broadcast = new Intent(RecordingsFragment.BROADCAST_DOWNLOAD_REQUEST);
+                    broadcast.putExtra(RecordingsFragment.KEY_FILE_NAME,recordingsList.get(position).getName());
+                    broadcast.putExtra(RecordingsFragment.KEY_FILE_ID,recordingsList.get(position).getHashValue());
+                    LocalBroadcastManager.getInstance(context).sendBroadcast(broadcast);
+                    return;
+                }
                 File file = new File(MainActivity.APP_DIR + File.separator + recordingsList.get(position).getName());
                 if (!isFileChanged(file,recordingsList.get(position).getHashValue(),position)){
                     notifyItemChanged(selectedPosition);
@@ -114,8 +133,15 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
         holder.buttonMore.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                if (recordingsList.get(position).getLocation()==Recording.LOCATION_ON_DRIVE){
+                    holder.buttonMore.setEnabled(false);
+                    Intent broadcast = new Intent(RecordingsFragment.BROADCAST_DOWNLOAD_REQUEST);
+                    broadcast.putExtra(RecordingsFragment.KEY_FILE_NAME,recordingsList.get(position).getName());
+                    broadcast.putExtra(RecordingsFragment.KEY_FILE_ID,recordingsList.get(position).getHashValue());
+                    LocalBroadcastManager.getInstance(context).sendBroadcast(broadcast);
+                    return;
+                }
                 final AlertDialog.Builder dialogBuilder = new AlertDialog.Builder(context);
-
                 LayoutInflater inflater = LayoutInflater.from(context);
                 View convertView = inflater.inflate(R.layout.dialog_menu, null);
                 ListView lv = convertView.findViewById(R.id.listView);
@@ -219,11 +245,21 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
                                     textFormat.setText(context.getResources().getString(R.string.quality_good));
                                 } else
                                     textFormat.setText(context.getResources().getString(R.string.quality_small));
-                                // On Drive
+                                // Location
                                 ImageView drive = detailsDialogLayout.findViewById(R.id.image_drive);
-                                if (recordingsList.get(position).isOnGoogleDrive())
+                                ImageView local = detailsDialogLayout.findViewById(R.id.image_local);
+                                if (recordingsList.get(position).getLocation() == Recording.LOCATION_ON_PHONE) {
+                                    local.setVisibility(View.VISIBLE);
+                                    drive.setVisibility(View.INVISIBLE);
+                                }
+                                else if (recordingsList.get(position).getLocation() == Recording.LOCATION_ON_DRIVE) {
+                                    local.setVisibility(View.INVISIBLE);
                                     drive.setVisibility(View.VISIBLE);
-                                else drive.setVisibility(View.INVISIBLE);
+                                }
+                                else{
+                                    local.setVisibility(View.VISIBLE);
+                                    drive.setVisibility(View.VISIBLE);
+                                }
                                 detailBuilder.setView(detailsDialogLayout)
                                         .setPositiveButton(R.string.ok, new DialogInterface.OnClickListener() {
                                             @Override

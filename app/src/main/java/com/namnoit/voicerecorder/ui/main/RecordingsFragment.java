@@ -31,12 +31,12 @@ import com.google.api.client.googleapis.extensions.android.gms.auth.GoogleAccoun
 import com.google.api.client.json.gson.GsonFactory;
 import com.google.api.client.util.ExponentialBackOff;
 import com.google.api.services.drive.DriveScopes;
-import com.namnoit.voicerecorder.drive.DriveChecker;
 import com.namnoit.voicerecorder.MainActivity;
 import com.namnoit.voicerecorder.R;
 import com.namnoit.voicerecorder.RecordingsAdapter;
 import com.namnoit.voicerecorder.data.Recording;
 import com.namnoit.voicerecorder.data.RecordingsDbHelper;
+import com.namnoit.voicerecorder.drive.DriveServiceHelper;
 import com.namnoit.voicerecorder.service.RecorderService;
 import com.namnoit.voicerecorder.service.RecordingPlaybackService;
 
@@ -53,6 +53,7 @@ public class RecordingsFragment extends Fragment {
     private RecordingsAdapter recordingsAdapter;
     private ArrayList<Recording> list;
     private RecordingsDbHelper db;
+    private DriveServiceHelper mDriveHelper;
     private SharedPreferences pref;
     private ImageButton closeRecordingButton, playRecordingButton;
     private SeekBar seekBar;
@@ -69,13 +70,17 @@ public class RecordingsFragment extends Fragment {
     public static final String BROADCAST_FILE_UPLOADED = "FILE_UPLOADED";
     public static final String BROADCAST_START_PLAYING = "START_PLAYING";
     public static final String BROADCAST_SIGNED_OUT = "USER_SIGNED_OUT";
-    public static final String BROADCAST_SIGNED_IN = "USER_SIGNED_IN";
+//    public static final String BROADCAST_SIGNED_IN = "USER_SIGNED_IN";
+    public static final String BROADCAST_SYNC_REQUEST = "REQUEST_SYNC";
+    public static final String BROADCAST_BACKUP_REQUEST = "REQUEST_BACKUP";
+    public static final String BROADCAST_DOWNLOAD_REQUEST = "REQUEST_DOWNLOAD";
     public static final String BROADCAST_PAUSED = "PAUSED";
     public static final String KEY_CURRENT_POSITION = "current_position";
     public static final String KEY_DURATION = "duration";
     public static final String KEY_POSITION = "position";
     public static final String KEY_HASH_VALUE = "hash_value";
     public static final String KEY_FILE_NAME = "file_name";
+    public static final String KEY_FILE_ID = "file_id";
     public static final String KEY_SEEK_TO_POSITION = "seek";
     // To show current item selected in list
     public static final String KEY_CURRENT_POSITION_ADAPTER = "selected_position";
@@ -99,33 +104,64 @@ public class RecordingsFragment extends Fragment {
                 else if (intent.getAction().equals(BROADCAST_FILE_DOWNLOADED)) {
                     Recording r = db.getRecordingWithHash(intent.getStringExtra(KEY_HASH_VALUE));
                     if (r != null) {
-                        r.setOnGoogleDrive(true);
-                        list.add(0, r);
-                        recordingsAdapter.notifyItemInserted(0);
-                        recordingsAdapter.updateSelectedPosition();
-                        recordingsAdapter.notifyItemRangeChanged(1, recordingsAdapter.getItemCount());
-                        recyclerView.scrollToPosition(0);
+                        r.setLocation(Recording.LOCATION_PHONE_DRIVE);
+                        for (int i = 0; i<list.size();i++){
+                            if (list.get(i).getName().equals(r.getName())){
+                                list.remove(i);
+                                list.add(i,r);
+                                recordingsAdapter.notifyItemChanged(i);
+                            }
+                        }
+//                        list.add(0, r);
+//                        recordingsAdapter.notifyItemInserted(0);
+//                        recordingsAdapter.updateSelectedPosition();
+//                        recordingsAdapter.notifyItemRangeChanged(1, recordingsAdapter.getItemCount());
+//                        recyclerView.scrollToPosition(0);
                     }
                 }
                 else if (intent.getAction().equals(BROADCAST_FILE_UPLOADED)) {
                     String hash = intent.getStringExtra(KEY_HASH_VALUE);
                     for (int i = 0; i < list.size(); i++){
                         if (list.get(i).getHashValue().equals(hash)) {
-                            list.get(i).setOnGoogleDrive(true);
+                            list.get(i).setLocation(Recording.LOCATION_PHONE_DRIVE);
                             recordingsAdapter.notifyItemChanged(i);
                         }
                     }
                 }
                 else if (intent.getAction().equals(BROADCAST_SIGNED_OUT)) {
-                    for (int i = 0; i<list.size();i++){
-                        if (list.get(i).isOnGoogleDrive()){
-                            list.get(i).setOnGoogleDrive(false);
-                            recordingsAdapter.notifyItemChanged(i);
-                        }
-                    }
+                    list.clear();
+                    list.addAll(db.getAll());
+                    recordingsAdapter.notifyDataSetChanged();
                 }
-                else if (intent.getAction().equals(BROADCAST_SIGNED_IN)) {
-                    updateUI();
+
+                else if (intent.getAction().equals(BROADCAST_SYNC_REQUEST)) {
+                    sync(false);
+                }
+                else if (intent.getAction().equals(BROADCAST_BACKUP_REQUEST)) {
+                    sync(true);
+                }
+                else if (intent.getAction().equals(BROADCAST_DOWNLOAD_REQUEST)) {
+                    if (isInternetAvailable()) {
+                        if (mDriveHelper == null) {
+                            GoogleSignInAccount account = GoogleSignIn.getLastSignedInAccount(requireContext());
+                            if (account != null) {
+                                final GoogleAccountCredential credential = GoogleAccountCredential.usingOAuth2(
+                                        requireContext(), Arrays.asList(DriveScopes.DRIVE_APPDATA, DriveScopes.DRIVE_FILE));
+                                credential.setBackOff(new ExponentialBackOff());
+                                credential.setSelectedAccount(account.getAccount());
+
+                                final com.google.api.services.drive.Drive googleDriveService =
+                                        new com.google.api.services.drive.Drive.Builder(
+                                                AndroidHttp.newCompatibleTransport(),
+                                                new GsonFactory(),
+                                                credential)
+                                                .setApplicationName(getResources().getString(R.string.app_name))
+                                                .build();
+                                mDriveHelper = new DriveServiceHelper(requireContext(), googleDriveService, list, recordingsAdapter);
+                            }
+                        }
+                        mDriveHelper.downloadFile(intent.getStringExtra(KEY_FILE_ID), intent.getStringExtra(KEY_FILE_NAME));
+                    }
                 }
                 else if (intent.getAction().equals(BROADCAST_START_PLAYING)) {
                     status = STATUS_PLAYING;
@@ -172,8 +208,6 @@ public class RecordingsFragment extends Fragment {
     public void onResume() {
         super.onResume();
         LocalBroadcastManager.getInstance(requireContext()).registerReceiver(receiver,
-                new IntentFilter(RecordingsFragment.BROADCAST_SIGNED_IN));
-        LocalBroadcastManager.getInstance(requireContext()).registerReceiver(receiver,
                 new IntentFilter(RecorderService.BROADCAST_FINISH_RECORDING));
         LocalBroadcastManager.getInstance(requireContext()).registerReceiver(receiver,
                 new IntentFilter(RecordingsFragment.BROADCAST_UPDATE_SEEKBAR));
@@ -189,7 +223,12 @@ public class RecordingsFragment extends Fragment {
                 new IntentFilter(RecordingsFragment.BROADCAST_FILE_UPLOADED));
         LocalBroadcastManager.getInstance(requireContext()).registerReceiver(receiver,
                 new IntentFilter(RecordingsFragment.BROADCAST_SIGNED_OUT));
-
+        LocalBroadcastManager.getInstance(requireContext()).registerReceiver(receiver,
+                new IntentFilter(RecordingsFragment.BROADCAST_SYNC_REQUEST));
+        LocalBroadcastManager.getInstance(requireContext()).registerReceiver(receiver,
+                new IntentFilter(RecordingsFragment.BROADCAST_BACKUP_REQUEST));
+        LocalBroadcastManager.getInstance(requireContext()).registerReceiver(receiver,
+                new IntentFilter(RecordingsFragment.BROADCAST_DOWNLOAD_REQUEST));
 
         status = pref.getInt(MainActivity.KEY_STATUS,STATUS_STOPPED);
         if (!isServiceRunning(RecordingPlaybackService.class)){
@@ -303,9 +342,9 @@ public class RecordingsFragment extends Fragment {
         return view;
     }
 
-    private void updateUI(){
-        ConnectivityManager cm = (ConnectivityManager) requireContext().getSystemService(Context.CONNECTIVITY_SERVICE);
-        if (cm != null && cm.getActiveNetworkInfo() != null) {
+
+    private void sync(boolean backup) {
+        if (isInternetAvailable()) {
             GoogleSignInAccount account = GoogleSignIn.getLastSignedInAccount(requireContext());
             if (account != null) {
                 final GoogleAccountCredential credential = GoogleAccountCredential.usingOAuth2(
@@ -320,10 +359,18 @@ public class RecordingsFragment extends Fragment {
                                 credential)
                                 .setApplicationName(getResources().getString(R.string.app_name))
                                 .build();
-                DriveChecker checker = new DriveChecker(requireContext(), googleDriveService, list, recordingsAdapter);
-                checker.check();
+                if (mDriveHelper == null)
+                    mDriveHelper = new DriveServiceHelper(requireContext(),googleDriveService,list,recordingsAdapter);
+                if (backup)
+                    mDriveHelper.backUp();
+                else mDriveHelper.sync();
             }
         }
+    }
+
+    private boolean isInternetAvailable() {
+        ConnectivityManager cm = (ConnectivityManager) requireContext().getSystemService(Context.CONNECTIVITY_SERVICE);
+        return cm != null && cm.getActiveNetworkInfo() != null;
     }
 
     private String seconds2String(int seconds){
