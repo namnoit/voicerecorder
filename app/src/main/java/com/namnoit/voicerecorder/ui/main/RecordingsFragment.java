@@ -70,7 +70,6 @@ public class RecordingsFragment extends Fragment {
     public static final String BROADCAST_FILE_UPLOADED = "FILE_UPLOADED";
     public static final String BROADCAST_START_PLAYING = "START_PLAYING";
     public static final String BROADCAST_SIGNED_OUT = "USER_SIGNED_OUT";
-//    public static final String BROADCAST_SIGNED_IN = "USER_SIGNED_IN";
     public static final String BROADCAST_SYNC_REQUEST = "REQUEST_SYNC";
     public static final String BROADCAST_BACKUP_REQUEST = "REQUEST_BACKUP";
     public static final String BROADCAST_DOWNLOAD_REQUEST = "REQUEST_DOWNLOAD";
@@ -107,16 +106,10 @@ public class RecordingsFragment extends Fragment {
                         r.setLocation(Recording.LOCATION_PHONE_DRIVE);
                         for (int i = 0; i<list.size();i++){
                             if (list.get(i).getName().equals(r.getName())){
-                                list.remove(i);
-                                list.add(i,r);
+                                list.set(i,r);
                                 recordingsAdapter.notifyItemChanged(i);
                             }
                         }
-//                        list.add(0, r);
-//                        recordingsAdapter.notifyItemInserted(0);
-//                        recordingsAdapter.updateSelectedPosition();
-//                        recordingsAdapter.notifyItemRangeChanged(1, recordingsAdapter.getItemCount());
-//                        recyclerView.scrollToPosition(0);
                     }
                 }
                 else if (intent.getAction().equals(BROADCAST_FILE_UPLOADED)) {
@@ -133,7 +126,6 @@ public class RecordingsFragment extends Fragment {
                     list.addAll(db.getAll());
                     recordingsAdapter.notifyDataSetChanged();
                 }
-
                 else if (intent.getAction().equals(BROADCAST_SYNC_REQUEST)) {
                     sync(false);
                 }
@@ -168,8 +160,7 @@ public class RecordingsFragment extends Fragment {
                     seekBar.setProgress(0);
                     playback.setVisibility(View.VISIBLE);
                     playback.setEnabled(true);
-                    recordingName = intent.getStringExtra(KEY_FILE_NAME);
-                    textTitle.setText(recordingName);
+                    textTitle.setText(recordingName = intent.getStringExtra(KEY_FILE_NAME));
                     durationMillis = intent.getIntExtra(KEY_DURATION, 0);
                     textDuration.setText(seconds2String(Math.round((float) durationMillis / 1000)));
                     playRecordingButton.setImageResource(R.drawable.ic_pause_white);
@@ -188,7 +179,7 @@ public class RecordingsFragment extends Fragment {
                     status = STATUS_STOPPED;
                     textCurrentPosition.setText("00:00:00");
                     textDuration.setText("00:00:00");
-                    playback.setVisibility(View.INVISIBLE);
+                    playback.setVisibility(View.GONE);
                     playback.setEnabled(false);
                     vto.dispatchOnGlobalLayout();
                 }
@@ -231,7 +222,7 @@ public class RecordingsFragment extends Fragment {
                 new IntentFilter(RecordingsFragment.BROADCAST_DOWNLOAD_REQUEST));
 
         status = pref.getInt(MainActivity.KEY_STATUS,STATUS_STOPPED);
-        if (!isServiceRunning(RecordingPlaybackService.class)){
+        if (!isServiceRunning()){
             status = STATUS_STOPPED;
             playback.setEnabled(false);
             playback.setVisibility(View.INVISIBLE);
@@ -328,8 +319,6 @@ public class RecordingsFragment extends Fragment {
         recyclerView.setAdapter(recordingsAdapter);
         playback = view.findViewById(R.id.playback);
 
-//        updateUI();
-
         vto = playback.getViewTreeObserver();
         vto.addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
             @Override
@@ -380,10 +369,11 @@ public class RecordingsFragment extends Fragment {
         return String.format(Locale.getDefault(),"%02d:%02d:%02d",h,m,s);
     }
 
-    private boolean isServiceRunning(Class<?> serviceClass) {
+    private boolean isServiceRunning() {
         ActivityManager manager = (ActivityManager) requireContext().getSystemService(Context.ACTIVITY_SERVICE);
+        if (manager == null) return false;
         for (ActivityManager.RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
-            if (serviceClass.getName().equals(service.service.getClassName())) {
+            if (RecordingPlaybackService.class.getName().equals(service.service.getClassName())) {
                 return true;
             }
         }

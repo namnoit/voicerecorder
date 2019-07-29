@@ -202,6 +202,7 @@ public class MainActivity extends AppCompatActivity
         if (account != null){
             navProfileName.setText(account.getDisplayName());
             navEmail.setText(account.getEmail());
+            sync(false);
         }
         else{
             navProfileName.setText(getResources().getString(R.string.app_name));
@@ -312,14 +313,8 @@ public class MainActivity extends AppCompatActivity
                                 @Override
                                 public void onComplete(@NonNull Task<Void> task) {
                                     updateUI(null);
-                                    Handler handler = new Handler();
-                                    handler.postDelayed(new Runnable() {
-                                        @Override
-                                        public void run() {
-                                            Intent broadcast = new Intent(RecordingsFragment.BROADCAST_SIGNED_OUT);
-                                            LocalBroadcastManager.getInstance(MainActivity.this).sendBroadcast(broadcast);
-                                        }
-                                    },500);
+                                    Intent broadcast = new Intent(RecordingsFragment.BROADCAST_SIGNED_OUT);
+                                    LocalBroadcastManager.getInstance(MainActivity.this).sendBroadcast(broadcast);
                                 }
                             });
                         }
@@ -387,7 +382,7 @@ public class MainActivity extends AppCompatActivity
         ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
         boolean internet = cm != null && cm.getActiveNetworkInfo() != null;
         if (!internet) {
-            View view = findViewById(R.id.layout_record);
+            View view = findViewById(R.id.drawer_layout);
             Snackbar.make(view, R.string.connection_failed, Snackbar.LENGTH_LONG).show();
         }
         return internet;

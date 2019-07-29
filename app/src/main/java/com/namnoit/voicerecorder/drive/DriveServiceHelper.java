@@ -98,7 +98,6 @@ public class DriveServiceHelper {
                 for (com.google.api.services.drive.model.File file : filesAppData.getFiles()) {
                     if (file.getName().equals(CONFIG_FILE)) {
                         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-
                         mDriveService.files().get(file.getId())
                                 .executeMediaAndDownloadTo(outputStream);
                         byte[] byteArray = outputStream.toByteArray();
@@ -299,7 +298,7 @@ public class DriveServiceHelper {
                 String duration = metadataRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION);
                 String dateNoFormat = metadataRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DATE);
                 MessageDigest digest;
-                digest = MessageDigest.getInstance("SHA-256");
+                digest = MessageDigest.getInstance(RecordingsAdapter.HASH_ALGORITHM);
                 byte[] buffer = new byte[8192];
                 int read;
                 InputStream is = new FileInputStream(file);

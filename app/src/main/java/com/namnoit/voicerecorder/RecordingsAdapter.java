@@ -42,6 +42,7 @@ import java.util.Locale;
 
 
 public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.ViewHolder>{
+    public static final String HASH_ALGORITHM = "SHA-256";
     private int selectedPosition = RecyclerView.NO_POSITION;
     private ArrayList<Recording> recordingsList;
     private Context context;
@@ -78,7 +79,9 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
             holder.textDuration.setText(dur);
             holder.textDate.setVisibility(View.VISIBLE);
             holder.textDate.setText(recordingsList.get(position).getDate());
-            holder.line.setVisibility(View.VISIBLE);
+            if (recordingsList.get(position).getLocation()==Recording.LOCATION_PHONE_DRIVE)
+                holder.line.setVisibility(View.VISIBLE);
+            else holder.line.setVisibility(View.INVISIBLE);
             holder.buttonMore.setImageResource(R.drawable.ic_more);
         } else{
             holder.textDuration.setText(R.string.on_drive);
@@ -353,7 +356,7 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
         if (file.exists()) {
             MessageDigest digest;
             try {
-                digest = MessageDigest.getInstance("SHA-256");
+                digest = MessageDigest.getInstance(HASH_ALGORITHM);
                 byte[] buffer = new byte[8192];
                 int read;
                 InputStream is = new FileInputStream(file);
