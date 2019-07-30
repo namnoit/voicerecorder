@@ -3,6 +3,7 @@ package com.namnoit.voicerecorder.drive;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.media.MediaMetadataRetriever;
@@ -320,11 +321,19 @@ public class DriveServiceHelper {
                 } else {
                     formattedDate = new SimpleDateFormat("MM/dd/yyyy HH:mm:ss", Locale.getDefault()).format(new Date());
                 }
+                Intent notificationIntent = new Intent(context, MainActivity.class);
+                notificationIntent.setAction(Intent.ACTION_MAIN);
+                notificationIntent.addCategory(Intent.CATEGORY_LAUNCHER);
+                notificationIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                PendingIntent pendingIntent =
+                        PendingIntent.getActivity(context, 0, notificationIntent, 0);
                 Notification notification =
                         new NotificationCompat.Builder(context, CHANNEL_ID)
                                 .setContentTitle(fileName)
                                 .setContentText(context.getText(R.string.notification_text_downloaded))
                                 .setSmallIcon(R.drawable.ic_launcher_foreground)
+                                .setContentIntent(pendingIntent)
+                                .setAutoCancel(true)
                                 .build();
                 NotificationManagerCompat notificationManager = NotificationManagerCompat.from(context);
                 notificationManager.notify(++NOTIFICATION_ID,notification);

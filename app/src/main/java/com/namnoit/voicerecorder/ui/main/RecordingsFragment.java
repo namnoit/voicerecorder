@@ -55,7 +55,7 @@ public class RecordingsFragment extends Fragment {
     private RecordingsDbHelper db;
     private DriveServiceHelper mDriveHelper;
     private SharedPreferences pref;
-    private ImageButton closeRecordingButton, playRecordingButton;
+    private ImageButton playRecordingButton;
     private SeekBar seekBar;
     private TextView textTitle, textCurrentPosition, textDuration;
     private View playback;
@@ -225,7 +225,7 @@ public class RecordingsFragment extends Fragment {
         if (!isServiceRunning()){
             status = STATUS_STOPPED;
             playback.setEnabled(false);
-            playback.setVisibility(View.INVISIBLE);
+            playback.setVisibility(View.GONE);
             vto.dispatchOnGlobalLayout();
         }else if (status == STATUS_PAUSED){
             curMillis = pref.getInt(KEY_CURRENT_POSITION,0);
@@ -282,7 +282,7 @@ public class RecordingsFragment extends Fragment {
         textTitle = view.findViewById(R.id.recordingTitle);
         textCurrentPosition = view.findViewById(R.id.recordingCurrent);
         textDuration = view.findViewById(R.id.recordingDuration);
-        closeRecordingButton = view.findViewById(R.id.closeRecordingButton);
+        ImageButton closeRecordingButton = view.findViewById(R.id.closeRecordingButton);
         playRecordingButton = view.findViewById(R.id.playRecordingButton);
         playRecordingButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -323,7 +323,7 @@ public class RecordingsFragment extends Fragment {
         vto.addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
             @Override
             public void onGlobalLayout() {
-                if (playback.getVisibility() == View.INVISIBLE)
+                if (playback.getVisibility() == View.GONE)
                     recyclerView.setPadding(0, 0, 0, 0);
                 else recyclerView.setPadding(0, 0, 0, playback.getHeight());
             }

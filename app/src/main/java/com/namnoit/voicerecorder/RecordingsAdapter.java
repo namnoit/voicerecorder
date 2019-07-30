@@ -5,6 +5,7 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.net.ConnectivityManager;
 import android.net.Uri;
 import android.os.StrictMode;
 import android.view.LayoutInflater;
@@ -23,6 +24,8 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.recyclerview.widget.RecyclerView;
+
+import com.google.android.material.snackbar.Snackbar;
 import com.namnoit.voicerecorder.data.Recording;
 import com.namnoit.voicerecorder.data.RecordingsDbHelper;
 import com.namnoit.voicerecorder.drive.DriveServiceHelper;
@@ -98,11 +101,13 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
             @Override
             public void onClick(View v) {
                 if (recordingsList.get(position).getLocation()==Recording.LOCATION_ON_DRIVE){
-                    holder.itemView.setEnabled(false);
-                    Intent broadcast = new Intent(RecordingsFragment.BROADCAST_DOWNLOAD_REQUEST);
-                    broadcast.putExtra(RecordingsFragment.KEY_FILE_NAME,recordingsList.get(position).getName());
-                    broadcast.putExtra(RecordingsFragment.KEY_FILE_ID,recordingsList.get(position).getHashValue());
-                    LocalBroadcastManager.getInstance(context).sendBroadcast(broadcast);
+                    if (isInternetAvailable()) {
+                        holder.itemView.setEnabled(false);
+                        Intent broadcast = new Intent(RecordingsFragment.BROADCAST_DOWNLOAD_REQUEST);
+                        broadcast.putExtra(RecordingsFragment.KEY_FILE_NAME, recordingsList.get(position).getName());
+                        broadcast.putExtra(RecordingsFragment.KEY_FILE_ID, recordingsList.get(position).getHashValue());
+                        LocalBroadcastManager.getInstance(context).sendBroadcast(broadcast);
+                    }
                     return;
                 }
                 File file = new File(MainActivity.APP_DIR + File.separator + recordingsList.get(position).getName());
@@ -129,7 +134,7 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
         holder.itemView.setOnLongClickListener(new View.OnLongClickListener() {
             @Override
             public boolean onLongClick(View view) {
-                Toast.makeText(context,Integer.toString(position),Toast.LENGTH_SHORT).show();
+                holder.buttonMore.callOnClick();
                 return true;
             }
         });
@@ -137,11 +142,13 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
             @Override
             public void onClick(View v) {
                 if (recordingsList.get(position).getLocation()==Recording.LOCATION_ON_DRIVE){
-                    holder.buttonMore.setEnabled(false);
-                    Intent broadcast = new Intent(RecordingsFragment.BROADCAST_DOWNLOAD_REQUEST);
-                    broadcast.putExtra(RecordingsFragment.KEY_FILE_NAME,recordingsList.get(position).getName());
-                    broadcast.putExtra(RecordingsFragment.KEY_FILE_ID,recordingsList.get(position).getHashValue());
-                    LocalBroadcastManager.getInstance(context).sendBroadcast(broadcast);
+                    if (isInternetAvailable()) {
+                        holder.buttonMore.setEnabled(false);
+                        Intent broadcast = new Intent(RecordingsFragment.BROADCAST_DOWNLOAD_REQUEST);
+                        broadcast.putExtra(RecordingsFragment.KEY_FILE_NAME, recordingsList.get(position).getName());
+                        broadcast.putExtra(RecordingsFragment.KEY_FILE_ID, recordingsList.get(position).getHashValue());
+                        LocalBroadcastManager.getInstance(context).sendBroadcast(broadcast);
+                    }
                     return;
                 }
                 final AlertDialog.Builder dialogBuilder = new AlertDialog.Builder(context);
@@ -322,6 +329,7 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
 
     private boolean isServiceRunning(Class<?> serviceClass) {
         ActivityManager manager = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
+        if (manager == null) return false;
         for (ActivityManager.RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
             if (serviceClass.getName().equals(service.service.getClassName())) {
                 return true;
@@ -403,5 +411,14 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
             dialog.show();
         }
         return isChanged;
+    }
+
+    private boolean isInternetAvailable() {
+        ConnectivityManager cm = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
+        boolean internet = cm != null && cm.getActiveNetworkInfo() != null;
+        if (!internet) {
+            Toast.makeText(context,R.string.connection_failed,Toast.LENGTH_LONG).show();
+        }
+        return internet;
     }
 }
