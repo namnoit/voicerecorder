@@ -16,6 +16,7 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.SystemClock;
+import android.util.Log;
 import android.widget.Toast;
 
 import androidx.core.app.NotificationCompat;
@@ -23,6 +24,8 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import com.namnoit.voicerecorder.MainActivity;
 import com.namnoit.voicerecorder.R;
 import com.namnoit.voicerecorder.data.RecordingsDbHelper;
+import com.namnoit.voicerecorder.ui.main.RecordFragment;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -46,6 +49,9 @@ public class RecorderService extends Service {
     public static final String AAC = "aac";
     public static final String THREE_GPP = "3gp";
     public static final String SERVICE_CHANNEL_ID = "Voice_Recorder_Service";
+    public static final String ACTION_START_RECORDING = "START_RECORDING";
+    public static final String ACTION_PAUSE_RECORDING = "PAUSE_RECORDING";
+    public static final String ACTION_RESUME_RECORDING = "RESUME_RECORDING";
     long timeInMilliseconds = 0L;
     private MediaRecorder recorder;
     private String fileName = null;
@@ -54,6 +60,8 @@ public class RecorderService extends Service {
     private ExecutorService executor = Executors.newSingleThreadExecutor();
     private long initial_time;
     private Intent broadcastUpdateTime = new Intent(BROADCAST_UPDATE_TIME);
+    private Intent broadcastPause = new Intent(ACTION_PAUSE_RECORDING);
+    private Intent broadcastResume = new Intent(ACTION_RESUME_RECORDING);
     private BroadcastReceiver receiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -64,10 +72,11 @@ public class RecorderService extends Service {
             new IntentFilter("android.intent.action.ACTION_SHUTDOWN");
     private IntentFilter powerOffFilter =
             new IntentFilter("android.intent.action.QUICKBOOT_POWEROFF");
+
     private Runnable sendUpdatesToUI = new Runnable() {
         public void run() {
-            timeInMilliseconds = SystemClock.uptimeMillis() - initial_time;
-            int timer = (int) timeInMilliseconds / 1000;
+//            int timer = (int) (timeInMilliseconds + SystemClock.uptimeMillis() - initial_time)/1000;
+            int timer = (int) Math.round((timeInMilliseconds + SystemClock.uptimeMillis() - initial_time)/1000.0);
             broadcastUpdateTime.putExtra("time", timer);
             LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(broadcastUpdateTime);
             handler.postDelayed(this, 1000);
@@ -92,10 +101,37 @@ public class RecorderService extends Service {
             recorder.release();
             recorder = null;
             executor.execute(saveFileRunnable);
-        } else {
+        }
+        else if (Objects.equals(intent.getAction(), ACTION_START_RECORDING)) {
             executor.execute(setUpRunnable);
             registerReceiver(receiver, shutdownFilter);
             registerReceiver(receiver, powerOffFilter);
+        }
+        else if (Objects.equals(intent.getAction(), ACTION_PAUSE_RECORDING)){
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                handler.removeCallbacks(sendUpdatesToUI);
+                recorder.pause();
+                timeInMilliseconds += SystemClock.uptimeMillis() - initial_time;
+                SharedPreferences pref = getSharedPreferences(MainActivity.PREF_NAME, Context.MODE_PRIVATE);
+                SharedPreferences.Editor editor = pref.edit();
+                editor.putInt(RecordFragment.KEY_RECORD_STATUS,RecordFragment.STATUS_PAUSED);
+                editor.apply();
+                createNotification(RecordFragment.STATUS_PAUSED);
+                LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(broadcastPause);
+            }
+        }
+        else if (Objects.equals(intent.getAction(), ACTION_RESUME_RECORDING)){
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                initial_time = SystemClock.uptimeMillis();
+                recorder.resume();
+                handler.postDelayed(sendUpdatesToUI,0);
+                SharedPreferences pref = getSharedPreferences(MainActivity.PREF_NAME, Context.MODE_PRIVATE);
+                SharedPreferences.Editor editor = pref.edit();
+                editor.putInt(RecordFragment.KEY_RECORD_STATUS,RecordFragment.STATUS_RECORDING);
+                editor.apply();
+                createNotification(RecordFragment.STATUS_RECORDING);
+                LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(broadcastResume);
+            }
         }
         return super.onStartCommand(intent, flags, startId);
     }
@@ -110,6 +146,10 @@ public class RecorderService extends Service {
             recorder.reset();
             recorder.release();
             recorder = null;
+            SharedPreferences pref = getSharedPreferences(MainActivity.PREF_NAME, Context.MODE_PRIVATE);
+            SharedPreferences.Editor editor = pref.edit();
+            editor.putInt(RecordFragment.KEY_RECORD_STATUS,RecordFragment.STATUS_STOPPED);
+            editor.apply();
             File file = new File(MainActivity.APP_DIR + File.separator + fileName);
             long length = file.length();
             MediaMetadataRetriever metadataRetriever = new MediaMetadataRetriever();
@@ -160,39 +200,7 @@ public class RecorderService extends Service {
     private Runnable setUpRunnable = new Runnable() {
         @Override
         public void run() {
-            // Create foreground Notification
-            Intent notificationIntent = new Intent(RecorderService.this, MainActivity.class);
-            notificationIntent.setAction(Intent.ACTION_MAIN);
-            notificationIntent.addCategory(Intent.CATEGORY_LAUNCHER);
-            notificationIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            PendingIntent pendingIntent =
-                    PendingIntent.getActivity(RecorderService.this, 0, notificationIntent, 0);
-            // Stop button
-            Intent stopIntent = new Intent(RecorderService.this, RecorderService.class);
-            stopIntent.setAction(RecordingPlaybackService.ACTION_STOP_SERVICE);
-            PendingIntent stopPendingIntent = PendingIntent.getService(
-                    RecorderService.this,
-                    0,
-                    stopIntent,
-                    PendingIntent.FLAG_CANCEL_CURRENT);
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                NotificationManager manager = getSystemService(NotificationManager.class);
-                NotificationChannel serviceChannel = new NotificationChannel(
-                        SERVICE_CHANNEL_ID,
-                        getResources().getString(R.string.service_channel),
-                        NotificationManager.IMPORTANCE_LOW
-                );
-                manager.createNotificationChannel(serviceChannel);
-            }
-            Notification notification =
-                    new NotificationCompat.Builder(RecorderService.this, SERVICE_CHANNEL_ID)
-                            .setContentTitle(getText(R.string.notification_title_recording))
-                            .setContentText(getText(R.string.notification_text_recording))
-                            .setSmallIcon(R.drawable.ic_mic)
-                            .setContentIntent(pendingIntent)
-                            .addAction(R.drawable.ic_stop, getResources().getString(R.string.stop), stopPendingIntent)
-                            .build();
-            startForeground(1, notification);
+            createNotification(RecordFragment.STATUS_RECORDING);
             SimpleDateFormat nameFormat = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault());
             dateNow = new Date();
             fileName = "Recording_" + nameFormat.format(dateNow);
@@ -229,6 +237,9 @@ public class RecorderService extends Service {
             try {
                 recorder.prepare();
                 recorder.start();
+                SharedPreferences.Editor editor = pref.edit();
+                editor.putInt(RecordFragment.KEY_RECORD_STATUS,RecordFragment.STATUS_RECORDING);
+                editor.apply();
                 new Handler(getMainLooper()).post(new Runnable() {
                     @Override
                     public void run() {
@@ -239,7 +250,7 @@ public class RecorderService extends Service {
                 });
                 initial_time = SystemClock.uptimeMillis();
                 handler.removeCallbacks(sendUpdatesToUI);
-                handler.postDelayed(sendUpdatesToUI, 1000);
+                handler.postDelayed(sendUpdatesToUI, 0);
             } catch (IllegalStateException e) {
                 e.printStackTrace();
             } catch (IOException e) {
@@ -286,6 +297,10 @@ public class RecorderService extends Service {
                 Intent broadcast = new Intent(BROADCAST_FINISH_RECORDING);
                 LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(broadcast);
                 stopSelf();
+                SharedPreferences pref = getSharedPreferences(MainActivity.PREF_NAME, Context.MODE_PRIVATE);
+                SharedPreferences.Editor editor = pref.edit();
+                editor.putInt(RecordFragment.KEY_RECORD_STATUS,RecordFragment.STATUS_STOPPED);
+                editor.apply();
             } catch (NoSuchAlgorithmException e) {
                 e.printStackTrace();
             } catch (FileNotFoundException e) {
@@ -297,4 +312,65 @@ public class RecorderService extends Service {
             }
         }
     };
+
+    private void createNotification(int status) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationManager manager = getSystemService(NotificationManager.class);
+            NotificationChannel serviceChannel = new NotificationChannel(
+                    SERVICE_CHANNEL_ID,
+                    getResources().getString(R.string.service_channel),
+                    NotificationManager.IMPORTANCE_LOW
+            );
+            manager.createNotificationChannel(serviceChannel);
+        }
+        Intent notificationIntent = new Intent(RecorderService.this, MainActivity.class);
+        notificationIntent.setAction(Intent.ACTION_MAIN);
+        notificationIntent.addCategory(Intent.CATEGORY_LAUNCHER);
+        notificationIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        PendingIntent pendingIntent =
+                PendingIntent.getActivity(RecorderService.this, 0, notificationIntent, 0);
+
+        // Stop button
+        Intent stopIntent = new Intent(RecorderService.this, RecorderService.class);
+        stopIntent.setAction(RecordingPlaybackService.ACTION_STOP_SERVICE);
+        PendingIntent stopPendingIntent = PendingIntent.getService(
+                RecorderService.this,
+                0,
+                stopIntent,
+                PendingIntent.FLAG_CANCEL_CURRENT);
+        NotificationCompat.Builder builder =
+                new NotificationCompat.Builder(RecorderService.this, SERVICE_CHANNEL_ID)
+                        .setContentTitle(getText(R.string.notification_title_recording))
+                        .setContentText(getText(R.string.notification_text_recording))
+                        .setSmallIcon(R.drawable.ic_mic)
+                        .setContentIntent(pendingIntent)
+                        .addAction(R.drawable.ic_stop, getResources().getString(R.string.stop), stopPendingIntent);
+
+        // Pause/resume button
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            if (status == RecordFragment.STATUS_RECORDING) {
+                Intent pauseIntent = new Intent(this, RecorderService.class);
+                pauseIntent.setAction(ACTION_PAUSE_RECORDING);
+                PendingIntent pausePendingIntent = PendingIntent.getService(
+                        RecorderService.this,
+                        0,
+                        pauseIntent,
+                        PendingIntent.FLAG_CANCEL_CURRENT);
+                builder.addAction(R.drawable.ic_pause_white,getResources().getString(R.string.pause),pausePendingIntent);
+            }
+            else if(status == RecordFragment.STATUS_PAUSED){
+                Intent resumeIntent = new Intent(this, RecorderService.class);
+                resumeIntent.setAction(ACTION_RESUME_RECORDING);
+                PendingIntent resumePendingIntent = PendingIntent.getService(
+                        RecorderService.this,
+                        0,
+                        resumeIntent,
+                        PendingIntent.FLAG_CANCEL_CURRENT);
+                builder.addAction(R.drawable.ic_record,getResources().getString(R.string.resume),resumePendingIntent);
+            }
+        }
+        Notification notification = builder.build();
+        startForeground(1, notification);
+
+    }
 }
