@@ -30,7 +30,7 @@ public class RecordingPlaybackService extends Service {
     private Handler handler = new Handler();
     private int duration = 0;
     private String fileName;
-    private Intent broadcastUpdateTime = new Intent(RecordingsFragment.BROADCAST_UPDATE_SEEKBAR);
+    private Intent broadcastUpdateTime = new Intent(RecordingsFragment.BROADCAST_UPDATE_SEEK_BAR);
     private Intent broadcastFinishPlaying = new Intent(RecordingsFragment.BROADCAST_FINISH_PLAYING);
     private Intent broadcastStartPlaying = new Intent(RecordingsFragment.BROADCAST_START_PLAYING);
     private Intent broadcastPaused = new Intent(RecordingsFragment.BROADCAST_PAUSED);

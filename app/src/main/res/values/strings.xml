@@ -39,7 +39,7 @@
     <string name="menu_feed_back">Send your feedback</string>
     <string name="my_email">phuongnamtruong.it@gmail.com</string>
     <string name="rename_success">Rename successfully</string>
-    <string name="rename_failed">Rename failed</string>
+    <string name="rename_failed">Rename failed: File name is not allowed</string>
     <string name="recording_not_found">Recording not found</string>
     <string name="recording_not_found_message">File was deleted or modified externally</string>
     <string name="delete_failed">Failed to delete file</string>

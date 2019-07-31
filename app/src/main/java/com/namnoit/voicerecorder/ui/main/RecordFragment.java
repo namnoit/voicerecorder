@@ -93,7 +93,8 @@ public class RecordFragment extends Fragment {
 
         if (isServiceRunning(RecorderService.class)) {
             stopButton.show();
-            SharedPreferences pref = requireContext().getSharedPreferences(MainActivity.PREF_NAME, Context.MODE_PRIVATE);
+            SharedPreferences pref = requireContext()
+                    .getSharedPreferences(MainActivity.PREF_NAME, Context.MODE_PRIVATE);
             recordStatus = pref.getInt(KEY_RECORD_STATUS,STATUS_RECORDING);
             if (recordStatus == STATUS_RECORDING){
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
@@ -106,7 +107,13 @@ public class RecordFragment extends Fragment {
             // Paused
             else {
                 recordPauseButton.setImageResource(R.drawable.ic_record);
-
+                int seconds = pref.getInt(RecorderService.PAUSE_POSITION,0);
+                String dur = String.format(Locale.getDefault(),
+                        "%02d:%02d:%02d",
+                        (seconds / (60 * 60)) % 24,
+                        (seconds / 60) % 60,
+                        seconds % 60);
+                textTime.setText(dur);
             }
 
         } else {

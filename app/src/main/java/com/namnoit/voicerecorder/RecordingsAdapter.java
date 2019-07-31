@@ -11,6 +11,8 @@ import android.os.StrictMode;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.WindowManager;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.AdapterView;
 import android.widget.CheckBox;
 import android.widget.EditText;
@@ -195,8 +197,10 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
                                 if (!isFileChanged(oldFile, recordingsList.get(position).getHashValue(), position)) {
                                     final EditText textFileName = new EditText(context);
                                     textFileName.setText(fileName[0]);
-                                    AlertDialog.Builder alertDialog = new AlertDialog.Builder(context);
-                                    alertDialog.setTitle(R.string.file_name)
+                                    textFileName.selectAll();
+                                    textFileName.requestFocus();
+                                    AlertDialog alertDialog = new AlertDialog.Builder(context)
+                                            .setTitle(R.string.file_name)
                                             .setView(textFileName)
                                             .setPositiveButton(R.string.ok, new DialogInterface.OnClickListener() {
                                                 @Override
@@ -218,7 +222,9 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
                                                 public void onClick(DialogInterface dialog, int which) {
                                                 }
                                             })
-                                            .create().show();
+                                            .create();
+                                    alertDialog.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
+                                    alertDialog.show();
                                 }
                                 break;
                             // Show details

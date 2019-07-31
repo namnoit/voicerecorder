@@ -16,7 +16,6 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.SystemClock;
-import android.util.Log;
 import android.widget.Toast;
 
 import androidx.core.app.NotificationCompat;
@@ -52,6 +51,7 @@ public class RecorderService extends Service {
     public static final String ACTION_START_RECORDING = "START_RECORDING";
     public static final String ACTION_PAUSE_RECORDING = "PAUSE_RECORDING";
     public static final String ACTION_RESUME_RECORDING = "RESUME_RECORDING";
+    public static final String PAUSE_POSITION = "PAUSE_POSITION";
     long timeInMilliseconds = 0L;
     private MediaRecorder recorder;
     private String fileName = null;
@@ -115,6 +115,7 @@ public class RecorderService extends Service {
                 SharedPreferences pref = getSharedPreferences(MainActivity.PREF_NAME, Context.MODE_PRIVATE);
                 SharedPreferences.Editor editor = pref.edit();
                 editor.putInt(RecordFragment.KEY_RECORD_STATUS,RecordFragment.STATUS_PAUSED);
+                editor.putInt(PAUSE_POSITION, Math.round(timeInMilliseconds/1000f));
                 editor.apply();
                 createNotification(RecordFragment.STATUS_PAUSED);
                 LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(broadcastPause);
@@ -343,8 +344,7 @@ public class RecorderService extends Service {
                         .setContentTitle(getText(R.string.notification_title_recording))
                         .setContentText(getText(R.string.notification_text_recording))
                         .setSmallIcon(R.drawable.ic_mic)
-                        .setContentIntent(pendingIntent)
-                        .addAction(R.drawable.ic_stop, getResources().getString(R.string.stop), stopPendingIntent);
+                        .setContentIntent(pendingIntent);
 
         // Pause/resume button
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
@@ -369,6 +369,7 @@ public class RecorderService extends Service {
                 builder.addAction(R.drawable.ic_record,getResources().getString(R.string.resume),resumePendingIntent);
             }
         }
+        builder.addAction(R.drawable.ic_stop, getResources().getString(R.string.stop), stopPendingIntent);
         Notification notification = builder.build();
         startForeground(1, notification);
 

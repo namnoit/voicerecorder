@@ -9,6 +9,7 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
 import android.net.ConnectivityManager;
 import android.net.Uri;
 import android.os.Bundle;
@@ -18,6 +19,7 @@ import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -28,11 +30,17 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+import androidx.core.graphics.drawable.RoundedBitmapDrawable;
+import androidx.core.graphics.drawable.RoundedBitmapDrawableFactory;
 import androidx.core.view.GravityCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.viewpager.widget.ViewPager;
 
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.engine.DiskCacheStrategy;
+import com.bumptech.glide.request.RequestOptions;
+import com.bumptech.glide.request.target.BitmapImageViewTarget;
 import com.google.android.gms.auth.api.signin.GoogleSignIn;
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
 import com.google.android.gms.auth.api.signin.GoogleSignInClient;
@@ -78,6 +86,7 @@ public class MainActivity extends AppCompatActivity
     private SharedPreferences pref;
     private int qualityChosen;
     private TextView navEmail, navProfileName;
+    private ImageView profilePicture;
     private GoogleSignInClient mGoogleSignInClient;
     //334025474902-ih2iogepn7f0na08cuh0706fitjrsqv9.apps.googleusercontent.com
 
@@ -173,6 +182,7 @@ public class MainActivity extends AppCompatActivity
         View headerView = navigationView.getHeaderView(0);
         navEmail = headerView.findViewById(R.id.nav_email);
         navProfileName = headerView.findViewById(R.id.nav_profile_name);
+        profilePicture = headerView.findViewById(R.id.avatar);
         GoogleSignInAccount account = GoogleSignIn.getLastSignedInAccount(this);
         updateUI(account);
 
@@ -202,11 +212,13 @@ public class MainActivity extends AppCompatActivity
         if (account != null){
             navProfileName.setText(account.getDisplayName());
             navEmail.setText(account.getEmail());
+            Glide.with(this).load(account.getPhotoUrl()).apply(RequestOptions.circleCropTransform()).into(profilePicture);
             sync(false);
         }
         else{
             navProfileName.setText(getResources().getString(R.string.app_name));
             navEmail.setText(getResources().getString(R.string.nav_header_subtitle));
+            profilePicture.setImageResource(R.mipmap.ic_launcher_round);
         }
     }
 
@@ -281,13 +293,17 @@ public class MainActivity extends AppCompatActivity
             View convertView = inflater.inflate(R.layout.dialog_account, null);
             TextView textAccountName = convertView.findViewById(R.id.textAccountName);
             TextView textAccountEmail = convertView.findViewById(R.id.textAccountEmail);
+            ImageView profilePicture = convertView.findViewById(R.id.profilePicture);
             if (account == null){
                 textAccountName.setText(R.string.not_signed_in);
                 textAccountEmail.setText("");
+                profilePicture.setVisibility(View.GONE);
             }
             else{
                 textAccountName.setText(account.getDisplayName());
                 textAccountEmail.setText(account.getEmail());
+                profilePicture.setVisibility(View.VISIBLE);
+                Glide.with(this).load(account.getPhotoUrl()).apply(RequestOptions.circleCropTransform()).into(profilePicture);
             }
             final Dialog dialog = dialogBuilder.setView(convertView)
                     .setTitle(R.string.account)

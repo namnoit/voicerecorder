@@ -44,10 +44,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Locale;
 
-
-/**
- * A simple {@link Fragment} subclass.
- */
 public class RecordingsFragment extends Fragment {
     private RecyclerView recyclerView;
     private RecordingsAdapter recordingsAdapter;
@@ -64,7 +60,7 @@ public class RecordingsFragment extends Fragment {
     public static final int STATUS_PLAYING = 0;
     public static final int STATUS_PAUSED = 1;
     public static final int STATUS_STOPPED = 2;
-    public static final String BROADCAST_UPDATE_SEEKBAR = "UPDATE_SEEKBAR";
+    public static final String BROADCAST_UPDATE_SEEK_BAR = "UPDATE_SEEK_BAR";
     public static final String BROADCAST_FINISH_PLAYING = "PLAY_FINISH";
     public static final String BROADCAST_FILE_DOWNLOADED = "FILE_DOWNLOADED";
     public static final String BROADCAST_FILE_UPLOADED = "FILE_UPLOADED";
@@ -76,7 +72,6 @@ public class RecordingsFragment extends Fragment {
     public static final String BROADCAST_PAUSED = "PAUSED";
     public static final String KEY_CURRENT_POSITION = "current_position";
     public static final String KEY_DURATION = "duration";
-    public static final String KEY_POSITION = "position";
     public static final String KEY_HASH_VALUE = "hash_value";
     public static final String KEY_FILE_NAME = "file_name";
     public static final String KEY_FILE_ID = "file_id";
@@ -162,17 +157,17 @@ public class RecordingsFragment extends Fragment {
                     playback.setEnabled(true);
                     textTitle.setText(recordingName = intent.getStringExtra(KEY_FILE_NAME));
                     durationMillis = intent.getIntExtra(KEY_DURATION, 0);
-                    textDuration.setText(seconds2String(Math.round((float) durationMillis / 1000)));
+                    textDuration.setText(seconds2String(Math.round(durationMillis / 1000f)));
                     playRecordingButton.setImageResource(R.drawable.ic_pause_white);
                 }
-                else if (intent.getAction().equals(BROADCAST_UPDATE_SEEKBAR)) {
+                else if (intent.getAction().equals(BROADCAST_UPDATE_SEEK_BAR)) {
                     if (status != STATUS_PLAYING) {
                         status = STATUS_PLAYING;
                         playRecordingButton.setImageResource(R.drawable.ic_pause_white);
                     }
                     curMillis = intent.getIntExtra(KEY_CURRENT_POSITION, 0);
                     seekBar.setProgress(curMillis * 100 / durationMillis);
-                    textCurrentPosition.setText(seconds2String(Math.round((float) curMillis / 1000)));
+                    textCurrentPosition.setText(seconds2String(Math.round(curMillis / 1000f)));
                 }
                 else if (intent.getAction().equals(BROADCAST_FINISH_PLAYING)) {
                     seekBar.setProgress(100);
@@ -201,7 +196,7 @@ public class RecordingsFragment extends Fragment {
         LocalBroadcastManager.getInstance(requireContext()).registerReceiver(receiver,
                 new IntentFilter(RecorderService.BROADCAST_FINISH_RECORDING));
         LocalBroadcastManager.getInstance(requireContext()).registerReceiver(receiver,
-                new IntentFilter(RecordingsFragment.BROADCAST_UPDATE_SEEKBAR));
+                new IntentFilter(RecordingsFragment.BROADCAST_UPDATE_SEEK_BAR));
         LocalBroadcastManager.getInstance(requireContext()).registerReceiver(receiver,
                 new IntentFilter(RecordingsFragment.BROADCAST_FINISH_PLAYING));
         LocalBroadcastManager.getInstance(requireContext()).registerReceiver(receiver,
@@ -232,14 +227,14 @@ public class RecordingsFragment extends Fragment {
             recordingName = pref.getString(KEY_FILE_NAME,"");
             durationMillis = pref.getInt(KEY_DURATION,0);
             textTitle.setText(recordingName);
-            textDuration.setText(seconds2String(Math.round((float)durationMillis/1000)));
-            textCurrentPosition.setText(seconds2String(Math.round((float)curMillis/1000)));
+            textDuration.setText(seconds2String(Math.round(durationMillis/1000f)));
+            textCurrentPosition.setText(seconds2String(Math.round(curMillis/1000f)));
             seekBar.setProgress(curMillis*100/durationMillis);
             playRecordingButton.setImageResource(R.drawable.ic_play);
         } else{
             durationMillis = pref.getInt(KEY_DURATION,0);
             textTitle.setText(pref.getString(KEY_FILE_NAME,""));
-            textDuration.setText(seconds2String(Math.round((float)pref.getInt(KEY_DURATION,0)/1000)));
+            textDuration.setText(seconds2String(Math.round(durationMillis/1000f)));
             playRecordingButton.setImageResource(R.drawable.ic_pause_white);
         }
     }
@@ -263,7 +258,7 @@ public class RecordingsFragment extends Fragment {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
                 if (fromUser){
-                    textCurrentPosition.setText(seconds2String(Math.round((float)progress/100000*durationMillis)));
+                    textCurrentPosition.setText(seconds2String(Math.round(progress/100000f*durationMillis)));
                     Intent playbackIntent = new Intent(getContext(), RecordingPlaybackService.class);
                     playbackIntent.setAction(RecordingPlaybackService.ACTION_SEEK);
                     playbackIntent.putExtra(KEY_SEEK_TO_POSITION,progress);
@@ -311,7 +306,8 @@ public class RecordingsFragment extends Fragment {
             }
         });
         recyclerView = view.findViewById(R.id.list_recordings);
-        LinearLayoutManager layoutManager = new LinearLayoutManager(getContext(), RecyclerView.VERTICAL, false);
+        LinearLayoutManager layoutManager =
+                new LinearLayoutManager(getContext(), RecyclerView.VERTICAL, false);
 
         recyclerView.setLayoutManager(layoutManager);
         recyclerView.setItemAnimator(new DefaultItemAnimator());
@@ -358,15 +354,17 @@ public class RecordingsFragment extends Fragment {
     }
 
     private boolean isInternetAvailable() {
-        ConnectivityManager cm = (ConnectivityManager) requireContext().getSystemService(Context.CONNECTIVITY_SERVICE);
+        ConnectivityManager cm =
+                (ConnectivityManager) requireContext().getSystemService(Context.CONNECTIVITY_SERVICE);
         return cm != null && cm.getActiveNetworkInfo() != null;
     }
 
     private String seconds2String(int seconds){
-        long s = seconds % 60;
-        long m = (seconds / 60) % 60;
-        long h = (seconds / (60 * 60)) % 24;
-        return String.format(Locale.getDefault(),"%02d:%02d:%02d",h,m,s);
+        return String.format(Locale.getDefault(),
+                "%02d:%02d:%02d",
+                (seconds / (60 * 60)) % 24,
+                (seconds / 60) % 60,
+                seconds % 60);
     }
 
     private boolean isServiceRunning() {
