@@ -81,7 +81,9 @@ public class DriveServiceHelper {
                     context.getResources().getString(R.string.alert_channel),
                     NotificationManager.IMPORTANCE_LOW
             );
-            manager.createNotificationChannel(serviceChannel);
+            if (manager != null) {
+                manager.createNotificationChannel(serviceChannel);
+            }
         }
     }
 
@@ -351,7 +353,6 @@ public class DriveServiceHelper {
             } catch (ParseException e) {
                 e.printStackTrace();
             }
-
         }
     }
 

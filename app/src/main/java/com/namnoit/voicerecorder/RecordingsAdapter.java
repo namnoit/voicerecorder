@@ -12,9 +12,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
-import android.view.inputmethod.InputMethodManager;
 import android.widget.AdapterView;
-import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ImageView;
@@ -27,13 +25,12 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.google.android.material.snackbar.Snackbar;
 import com.namnoit.voicerecorder.data.Recording;
 import com.namnoit.voicerecorder.data.RecordingsDbHelper;
-import com.namnoit.voicerecorder.drive.DriveServiceHelper;
 import com.namnoit.voicerecorder.service.RecorderService;
 import com.namnoit.voicerecorder.service.RecordingPlaybackService;
 import com.namnoit.voicerecorder.ui.main.RecordingsFragment;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -44,6 +41,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Locale;
+import java.util.Objects;
 
 
 public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.ViewHolder>{
@@ -155,7 +153,7 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
                 }
                 final AlertDialog.Builder dialogBuilder = new AlertDialog.Builder(context);
                 LayoutInflater inflater = LayoutInflater.from(context);
-                View convertView = inflater.inflate(R.layout.dialog_menu, null);
+                final View convertView = inflater.inflate(R.layout.dialog_menu,null);
                 ListView lv = convertView.findViewById(R.id.listView);
                 final ListDialogAdapter listAdapter = new ListDialogAdapter(context);
                 lv.setAdapter(listAdapter);
@@ -223,7 +221,8 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
                                                 }
                                             })
                                             .create();
-                                    alertDialog.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
+                                    Objects.requireNonNull(alertDialog.getWindow())
+                                            .setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
                                     alertDialog.show();
                                 }
                                 break;
@@ -231,7 +230,7 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
                             case 2:
                                 final AlertDialog.Builder detailBuilder = new AlertDialog.Builder(context);
                                 LayoutInflater inflater = LayoutInflater.from(context);
-                                final View detailsDialogLayout = inflater.inflate(R.layout.dialog_details, null);
+                                final View detailsDialogLayout = inflater.inflate(R.layout.dialog_details, parent,false);
                                 // File name
                                 TextView textNameDetails = detailsDialogLayout.findViewById(R.id.text_details_title);
                                 textNameDetails.setText(recordingsList.get(position).getName());

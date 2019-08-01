@@ -14,12 +14,15 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
 import android.widget.Toast;
+
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
+
 import com.namnoit.voicerecorder.MainActivity;
 import com.namnoit.voicerecorder.R;
 import com.namnoit.voicerecorder.ui.main.RecordingsFragment;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.Objects;
@@ -60,7 +63,7 @@ public class RecordingPlaybackService extends Service {
                 broadcastStartPlaying.putExtra(RecordingsFragment.KEY_DURATION,duration);
                 mp.start();
                 LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(broadcastStartPlaying);
-                handler.postDelayed(updateSeekBarTask,1000);
+                handler.postDelayed(updateSeekBarTask,0);
                 SharedPreferences pref = getSharedPreferences(MainActivity.PREF_NAME, Context.MODE_PRIVATE);
                 SharedPreferences.Editor editor = pref.edit();
                 editor.putInt(MainActivity.KEY_STATUS,RecordingsFragment.STATUS_PLAYING);
@@ -82,6 +85,7 @@ public class RecordingPlaybackService extends Service {
         String fn = intent.getStringExtra(RecordingsFragment.KEY_FILE_NAME);
         if (fn != null) fileName = fn;
         if (Objects.equals(intent.getAction(), ACTION_PLAY)) {
+            handler.removeCallbacks(updateSeekBarTask);
             createNotification(fileName, RecordingsFragment.STATUS_PLAYING);
             mediaPlayer.reset();
             mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
@@ -157,7 +161,9 @@ public class RecordingPlaybackService extends Service {
                     getResources().getString(R.string.service_channel),
                     NotificationManager.IMPORTANCE_LOW
             );
-            manager.createNotificationChannel(serviceChannel);
+            if (manager != null) {
+                manager.createNotificationChannel(serviceChannel);
+            }
         }
 
         Intent notificationIntent = new Intent(this, MainActivity.class);

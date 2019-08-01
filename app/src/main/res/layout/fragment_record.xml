@@ -42,6 +42,7 @@
         android:layout_marginTop="20dp"
         android:backgroundTint="@color/colorFab"
         android:longClickable="false"
+        android:visibility="gone"
         app:borderWidth="0dp"
         app:fabCustomSize="90dp"
         app:layout_constraintEnd_toEndOf="parent"

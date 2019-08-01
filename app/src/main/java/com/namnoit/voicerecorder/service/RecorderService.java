@@ -20,6 +20,7 @@ import android.widget.Toast;
 
 import androidx.core.app.NotificationCompat;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
+
 import com.namnoit.voicerecorder.MainActivity;
 import com.namnoit.voicerecorder.R;
 import com.namnoit.voicerecorder.data.RecordingsDbHelper;
@@ -75,7 +76,6 @@ public class RecorderService extends Service {
 
     private Runnable sendUpdatesToUI = new Runnable() {
         public void run() {
-//            int timer = (int) (timeInMilliseconds + SystemClock.uptimeMillis() - initial_time)/1000;
             int timer = (int) Math.round((timeInMilliseconds + SystemClock.uptimeMillis() - initial_time)/1000.0);
             broadcastUpdateTime.putExtra("time", timer);
             LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(broadcastUpdateTime);
@@ -322,7 +322,9 @@ public class RecorderService extends Service {
                     getResources().getString(R.string.service_channel),
                     NotificationManager.IMPORTANCE_LOW
             );
-            manager.createNotificationChannel(serviceChannel);
+            if (manager != null) {
+                manager.createNotificationChannel(serviceChannel);
+            }
         }
         Intent notificationIntent = new Intent(RecorderService.this, MainActivity.class);
         notificationIntent.setAction(Intent.ACTION_MAIN);

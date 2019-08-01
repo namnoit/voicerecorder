@@ -9,7 +9,6 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
-import android.graphics.Bitmap;
 import android.net.ConnectivityManager;
 import android.net.Uri;
 import android.os.Bundle;
@@ -30,17 +29,13 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
-import androidx.core.graphics.drawable.RoundedBitmapDrawable;
-import androidx.core.graphics.drawable.RoundedBitmapDrawableFactory;
 import androidx.core.view.GravityCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.viewpager.widget.ViewPager;
 
 import com.bumptech.glide.Glide;
-import com.bumptech.glide.load.engine.DiskCacheStrategy;
 import com.bumptech.glide.request.RequestOptions;
-import com.bumptech.glide.request.target.BitmapImageViewTarget;
 import com.google.android.gms.auth.api.signin.GoogleSignIn;
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
 import com.google.android.gms.auth.api.signin.GoogleSignInClient;
@@ -88,7 +83,6 @@ public class MainActivity extends AppCompatActivity
     private TextView navEmail, navProfileName;
     private ImageView profilePicture;
     private GoogleSignInClient mGoogleSignInClient;
-    //334025474902-ih2iogepn7f0na08cuh0706fitjrsqv9.apps.googleusercontent.com
 
 
     @Override
@@ -161,7 +155,6 @@ public class MainActivity extends AppCompatActivity
         checkPermissions();
 
         GoogleSignInOptions gso = new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-//                .requestIdToken("334025474902-3m9reou6lscdvh6j9egsp6e05cpld0m7.apps.googleusercontent.com")
                 .requestEmail()
                 .requestScopes(new Scope(DriveScopes.DRIVE_APPDATA),new Scope(DriveScopes.DRIVE_FILE))
                 .build();
@@ -250,7 +243,6 @@ public class MainActivity extends AppCompatActivity
         return super.onOptionsItemSelected(item);
     }
 
-    @SuppressWarnings("StatementWithEmptyBody")
     @Override
     public boolean onNavigationItemSelected(@NonNull MenuItem item) {
         // Handle navigation view item clicks here.
@@ -290,7 +282,7 @@ public class MainActivity extends AppCompatActivity
             GoogleSignInAccount account = GoogleSignIn.getLastSignedInAccount(this);
             AlertDialog.Builder dialogBuilder = new AlertDialog.Builder(MainActivity.this);
             LayoutInflater inflater = LayoutInflater.from(MainActivity.this);
-            View convertView = inflater.inflate(R.layout.dialog_account, null);
+            View convertView = inflater.inflate(R.layout.dialog_account, drawer,false);
             TextView textAccountName = convertView.findViewById(R.id.textAccountName);
             TextView textAccountEmail = convertView.findViewById(R.id.textAccountEmail);
             ImageView profilePicture = convertView.findViewById(R.id.profilePicture);
@@ -361,8 +353,19 @@ public class MainActivity extends AppCompatActivity
             intent.putExtra(Intent.EXTRA_EMAIL, new String[]{getResources().getString(R.string.my_email)});
             startActivity(intent);
         }
-        else if (id == R.id.nav_view) {
+        else if (id == R.id.nav_version) {
+            drawer.closeDrawer(GravityCompat.START,false);
+            AlertDialog.Builder dialogBuilder = new AlertDialog.Builder(MainActivity.this);
+            LayoutInflater inflater = LayoutInflater.from(MainActivity.this);
+            View convertView = inflater.inflate(R.layout.dialog_about, drawer,false);
+            dialogBuilder.setView(convertView)
+                    .setPositiveButton(R.string.ok, new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialogInterface, int i) {
 
+                        }
+                    })
+                    .create().show();
         }
 
         item.setCheckable(false);
