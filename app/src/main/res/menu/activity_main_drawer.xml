@@ -3,23 +3,46 @@
     xmlns:tools="http://schemas.android.com/tools"
     tools:showIn="navigation_view">
 
-    <group android:checkableBehavior="single">
-        <item
-            android:id="@+id/nav_home"
-            android:icon="@drawable/ic_link"
-            android:title="@string/menu_home" />
-    </group>
 
-    <item android:title="Communicate">
+        <item
+            android:id="@+id/nav_quality"
+            android:icon="@drawable/ic_music"
+            android:title="@string/menu_quality" />
+
+
+    <item android:title="@string/menu_sync_drive"
+        android:icon="@drawable/ic_drive">
+        <menu>
+            <item
+                android:id="@+id/nav_account"
+                android:icon="@drawable/ic_account"
+                android:title="@string/account" />
+            <item
+                android:id="@+id/nav_sync"
+                android:icon="@drawable/ic_sync"
+                android:title="@string/sync" />
+            <item
+                android:id="@+id/nav_backup"
+                android:icon="@drawable/ic_backup"
+                android:title="@string/backup" />
+        </menu>
+    </item>
+
+    <item android:title="@string/communicate">
         <menu>
             <item
                 android:id="@+id/nav_rate"
                 android:icon="@drawable/ic_playstore"
-                android:title="@string/menu_share" />
+                android:title="@string/menu_rate" />
             <item
-                android:id="@+id/nav_visit"
-                android:icon="@drawable/ic_link"
-                android:title="@string/menu_send" />
+                android:id="@+id/nav_feed_back"
+                android:icon="@drawable/ic_email"
+                android:title="@string/menu_feed_back" />
+            <item
+                android:id="@+id/nav_version"
+                android:icon="@drawable/ic_info"
+                android:checkable="false"
+                android:title="@string/menu_version" />
         </menu>
     </item>
 

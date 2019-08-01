@@ -8,47 +8,47 @@
 
 
     <TextView
-        android:id="@+id/textView2"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="8dp"
-        android:layout_marginEnd="8dp"
-        android:layout_marginBottom="30dp"
+        android:id="@+id/textTime"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:gravity="center"
         android:text="00:00:00"
+        android:textAlignment="center"
         android:textSize="40sp"
-        app:layout_constraintBottom_toTopOf="@+id/button_record_stop"
+        app:layout_constraintBottom_toTopOf="@+id/button_record_pause"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent" />
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
 
     <com.google.android.material.floatingactionbutton.FloatingActionButton
-        android:id="@+id/button_record_stop"
+        android:id="@+id/button_record_pause"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="100dp"
-        android:clickable="true"
-        android:focusable="true"
+        android:backgroundTint="@color/colorFab"
         app:fabCustomSize="90dp"
+        app:borderWidth="0dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:maxImageSize="30dp"
-        app:srcCompat="@drawable/ic_circle" />
+        app:maxImageSize="48dp"
+        android:longClickable="false"
+        app:srcCompat="@drawable/ic_record" />
 
     <com.google.android.material.floatingactionbutton.FloatingActionButton
-        android:id="@+id/button_pause"
+        android:id="@+id/button_stop"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginStart="8dp"
-        android:layout_marginTop="30dp"
-        android:layout_marginEnd="8dp"
-        android:clickable="true"
-        android:focusable="true"
+        android:layout_marginTop="20dp"
+        android:backgroundTint="@color/colorFab"
+        android:longClickable="false"
+        android:visibility="gone"
+        app:borderWidth="0dp"
         app:fabCustomSize="90dp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/button_record_stop"
-        app:maxImageSize="50dp"
-        app:srcCompat="@drawable/ic_pause" />
+        app:layout_constraintTop_toBottomOf="@+id/button_record_pause"
+        app:maxImageSize="30dp"
+        app:srcCompat="@drawable/square" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
