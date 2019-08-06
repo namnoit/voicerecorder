@@ -58,7 +58,8 @@ public class DriveServiceHelper {
     private static final String TYPE_JSON = "application/json";
     private static final String CONFIG_FILE = "config.json";
     private static final String FOLDER_ID = "folder_id";
-    private static final String CHANNEL_ID = "ez_voice_recorder_alert";
+    private static final String DEFAULT_CHANNEL_ID = "ez_voice_recorder_default";
+    private static final String IMPORTANCE_CHANNEL_ID = "ez_voice_recorder_importance";
     private static int NOTIFICATION_ID;
     private Context context;
     private ExecutorService executor;
@@ -77,12 +78,18 @@ public class DriveServiceHelper {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationManager manager = context.getSystemService(NotificationManager.class);
             NotificationChannel serviceChannel = new NotificationChannel(
-                    CHANNEL_ID,
+                    DEFAULT_CHANNEL_ID,
                     context.getResources().getString(R.string.alert_channel),
                     NotificationManager.IMPORTANCE_LOW
             );
+            NotificationChannel pushNotificationChannel = new NotificationChannel(
+                    IMPORTANCE_CHANNEL_ID,
+                    context.getResources().getString(R.string.importance_alert_channel),
+                    NotificationManager.IMPORTANCE_HIGH
+            );
             if (manager != null) {
                 manager.createNotificationChannel(serviceChannel);
+                manager.createNotificationChannel(pushNotificationChannel);
             }
         }
     }
@@ -90,6 +97,14 @@ public class DriveServiceHelper {
     private Runnable backUpRunnable = new Runnable(){
         @Override
         public void run() {
+            Notification pushNotification =
+                    new NotificationCompat.Builder(context, IMPORTANCE_CHANNEL_ID)
+                            .setContentTitle(context.getResources().getString(R.string.app_name))
+                            .setContentText(context.getText(R.string.backup_in_progress))
+                            .setSmallIcon(R.drawable.ic_launcher_foreground)
+                            .build();
+            NotificationManagerCompat notificationManager = NotificationManagerCompat.from(context);
+            notificationManager.notify(NOTIFICATION_ID+1,pushNotification);
             String folderId = "";
             FileList filesAppData;
             try {
@@ -197,6 +212,7 @@ public class DriveServiceHelper {
             ArrayList<Recording> localList = db.getAll();
             // localList: Files in local
             // driveList: Files in Google Drive
+            boolean shouldCancelNotification = true;
             for (Recording recording : localList) {
                 boolean exist = false;
                 for (com.google.api.services.drive.model.File driveFile : driveList) {
@@ -206,11 +222,14 @@ public class DriveServiceHelper {
                     }
                 }
                 if (!exist) {
+                    shouldCancelNotification = false;
                     UploadThread uploadThread = new UploadThread(recording.getName(), folderId, recording.getHashValue());
                     executor.execute(uploadThread);
                 }
             }
             executor.shutdown();
+            if (shouldCancelNotification)
+                notificationManager.cancel(NOTIFICATION_ID+1);
         }
     };
 
@@ -258,7 +277,7 @@ public class DriveServiceHelper {
                             .execute();
 
                     Notification notification =
-                            new NotificationCompat.Builder(context, CHANNEL_ID)
+                            new NotificationCompat.Builder(context, DEFAULT_CHANNEL_ID)
                                     .setContentTitle(fileName)
                                     .setContentText(context.getText(R.string.notification_text_uploaded))
                                     .setSmallIcon(R.drawable.ic_launcher_foreground)
@@ -330,7 +349,7 @@ public class DriveServiceHelper {
                 PendingIntent pendingIntent =
                         PendingIntent.getActivity(context, 0, notificationIntent, 0);
                 Notification notification =
-                        new NotificationCompat.Builder(context, CHANNEL_ID)
+                        new NotificationCompat.Builder(context, DEFAULT_CHANNEL_ID)
                                 .setContentTitle(fileName)
                                 .setContentText(context.getText(R.string.notification_text_downloaded))
                                 .setSmallIcon(R.drawable.ic_launcher_foreground)
@@ -359,6 +378,14 @@ public class DriveServiceHelper {
     private Runnable syncRunnable = new Runnable() {
         @Override
         public void run() {
+            Notification notification =
+                    new NotificationCompat.Builder(context, IMPORTANCE_CHANNEL_ID)
+                            .setContentTitle(context.getResources().getString(R.string.app_name))
+                            .setContentText(context.getText(R.string.sync_in_progress))
+                            .setSmallIcon(R.drawable.ic_launcher_foreground)
+                            .build();
+            NotificationManagerCompat notificationManager = NotificationManagerCompat.from(context);
+            notificationManager.notify(NOTIFICATION_ID,notification);
             String folderId = "";
             FileList filesAppData;
             try {
@@ -386,7 +413,6 @@ public class DriveServiceHelper {
             } catch (JSONException e) {
                 e.printStackTrace();
             }
-
             // List of files in Google Drive folder
             List<com.google.api.services.drive.model.File> driveList = new ArrayList<>();
             // Folder has not been created yet, create new folder
@@ -441,6 +467,7 @@ public class DriveServiceHelper {
                     }
                 }
             }
+            notificationManager.cancel(NOTIFICATION_ID);
         }
     };
 }

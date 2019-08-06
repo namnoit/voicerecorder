@@ -55,7 +55,8 @@
     <string name="notification_text_downloaded">File downloaded</string>
     <string name="drive_line_description">To show if this file is on Google Drive</string>
     <string name="service_channel">Ez Voice Recorder Service</string>
-    <string name="alert_channel">Ez Voice Recorder alert</string>
+    <string name="alert_channel">Ez Voice Recorder default alert</string>
+    <string name="importance_alert_channel">Ez Voice Recorder importance alert</string>
     <string name="account">Account</string>
     <string name="sign_in">Sign in</string>
     <string name="sign_out">Sign out</string>
@@ -64,5 +65,7 @@
     <string name="files_up_to_date">All files are up-to-date</string>
     <string name="sync">Sync now</string>
     <string name="on_drive">On Google Drive</string>
+    <string name="sync_in_progress">Sync in progress</string>
+    <string name="backup_in_progress">Backup in progress</string>
 </resources>
 
