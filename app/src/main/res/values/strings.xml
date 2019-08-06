@@ -13,7 +13,6 @@
     <string name="will_be_deleted">will be deleted</string>
     <string name="menu_quality">Quality</string>
     <string name="menu_share">Share</string>
-
     <string name="tab_record">Record</string>
     <string name="tab_recordings">Recordings</string>
     <string name="notification_title_recording">Recording…</string>
@@ -67,5 +66,10 @@
     <string name="on_drive">On Google Drive</string>
     <string name="sync_in_progress">Sync in progress</string>
     <string name="backup_in_progress">Backup in progress</string>
+    <string name="start_time">00:00:00</string>
+    <string name="play_recording_button_desc">Play recording button</string>
+    <string name="close_recording_button_desc">Close recording button</string>
+    <string name="icon_description">Icon</string>
+    <string name="toast_recording_paused">Recording paused</string>
 </resources>
 

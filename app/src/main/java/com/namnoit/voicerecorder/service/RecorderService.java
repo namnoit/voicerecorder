@@ -9,7 +9,6 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.SharedPreferences;
 import android.media.MediaMetadataRetriever;
 import android.media.MediaRecorder;
 import android.os.Build;
@@ -23,6 +22,7 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import com.namnoit.voicerecorder.MainActivity;
 import com.namnoit.voicerecorder.R;
+import com.namnoit.voicerecorder.SharedPreferenceManager;
 import com.namnoit.voicerecorder.data.RecordingsDbHelper;
 import com.namnoit.voicerecorder.ui.main.RecordFragment;
 
@@ -52,7 +52,7 @@ public class RecorderService extends Service {
     public static final String ACTION_START_RECORDING = "START_RECORDING";
     public static final String ACTION_PAUSE_RECORDING = "PAUSE_RECORDING";
     public static final String ACTION_RESUME_RECORDING = "RESUME_RECORDING";
-    public static final String PAUSE_POSITION = "PAUSE_POSITION";
+    private SharedPreferenceManager mPref;
     long timeInMilliseconds = 0L;
     private MediaRecorder recorder;
     private String fileName = null;
@@ -84,6 +84,7 @@ public class RecorderService extends Service {
     };
 
     public RecorderService() {
+        mPref = SharedPreferenceManager.getInstance();
     }
 
     @Override
@@ -112,11 +113,9 @@ public class RecorderService extends Service {
                 handler.removeCallbacks(sendUpdatesToUI);
                 recorder.pause();
                 timeInMilliseconds += SystemClock.uptimeMillis() - initial_time;
-                SharedPreferences pref = getSharedPreferences(MainActivity.PREF_NAME, Context.MODE_PRIVATE);
-                SharedPreferences.Editor editor = pref.edit();
-                editor.putInt(RecordFragment.KEY_RECORD_STATUS,RecordFragment.STATUS_PAUSED);
-                editor.putInt(PAUSE_POSITION, Math.round(timeInMilliseconds/1000f));
-                editor.apply();
+                mPref.put(SharedPreferenceManager.Key.RECORD_STATUS_KEY,RecordFragment.STATUS_PAUSED);
+                mPref.put(SharedPreferenceManager.Key.PAUSE_POSITION,Math.round(timeInMilliseconds/1000f));
+
                 createNotification(RecordFragment.STATUS_PAUSED);
                 LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(broadcastPause);
             }
@@ -126,10 +125,7 @@ public class RecorderService extends Service {
                 initial_time = SystemClock.uptimeMillis();
                 recorder.resume();
                 handler.postDelayed(sendUpdatesToUI,0);
-                SharedPreferences pref = getSharedPreferences(MainActivity.PREF_NAME, Context.MODE_PRIVATE);
-                SharedPreferences.Editor editor = pref.edit();
-                editor.putInt(RecordFragment.KEY_RECORD_STATUS,RecordFragment.STATUS_RECORDING);
-                editor.apply();
+                mPref.put(SharedPreferenceManager.Key.RECORD_STATUS_KEY,RecordFragment.STATUS_RECORDING);
                 createNotification(RecordFragment.STATUS_RECORDING);
                 LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(broadcastResume);
             }
@@ -147,10 +143,7 @@ public class RecorderService extends Service {
             recorder.reset();
             recorder.release();
             recorder = null;
-            SharedPreferences pref = getSharedPreferences(MainActivity.PREF_NAME, Context.MODE_PRIVATE);
-            SharedPreferences.Editor editor = pref.edit();
-            editor.putInt(RecordFragment.KEY_RECORD_STATUS,RecordFragment.STATUS_STOPPED);
-            editor.apply();
+            mPref.put(SharedPreferenceManager.Key.RECORD_STATUS_KEY,RecordFragment.STATUS_STOPPED);
             File file = new File(MainActivity.APP_DIR + File.separator + fileName);
             long length = file.length();
             MediaMetadataRetriever metadataRetriever = new MediaMetadataRetriever();
@@ -208,9 +201,7 @@ public class RecorderService extends Service {
             // Configure Media Recorder
             recorder = new MediaRecorder();
             recorder.setAudioSource(MediaRecorder.AudioSource.DEFAULT);
-            SharedPreferences pref = getSharedPreferences(MainActivity.PREF_NAME, Context.MODE_PRIVATE);
-            int audioFormat = pref.getInt(MainActivity.KEY_QUALITY, MainActivity.QUALITY_GOOD);
-
+            int audioFormat = mPref.getInt(SharedPreferenceManager.Key.QUALITY_KEY,MainActivity.QUALITY_GOOD);
             switch (audioFormat) {
                 case MainActivity.QUALITY_GOOD:
                     recorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
@@ -238,9 +229,7 @@ public class RecorderService extends Service {
             try {
                 recorder.prepare();
                 recorder.start();
-                SharedPreferences.Editor editor = pref.edit();
-                editor.putInt(RecordFragment.KEY_RECORD_STATUS,RecordFragment.STATUS_RECORDING);
-                editor.apply();
+                mPref.put(SharedPreferenceManager.Key.RECORD_STATUS_KEY,RecordFragment.STATUS_RECORDING);
                 new Handler(getMainLooper()).post(new Runnable() {
                     @Override
                     public void run() {
@@ -298,10 +287,7 @@ public class RecorderService extends Service {
                 Intent broadcast = new Intent(BROADCAST_FINISH_RECORDING);
                 LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(broadcast);
                 stopSelf();
-                SharedPreferences pref = getSharedPreferences(MainActivity.PREF_NAME, Context.MODE_PRIVATE);
-                SharedPreferences.Editor editor = pref.edit();
-                editor.putInt(RecordFragment.KEY_RECORD_STATUS,RecordFragment.STATUS_STOPPED);
-                editor.apply();
+                mPref.put(SharedPreferenceManager.Key.RECORD_STATUS_KEY,RecordFragment.STATUS_STOPPED);
             } catch (NoSuchAlgorithmException e) {
                 e.printStackTrace();
             } catch (FileNotFoundException e) {

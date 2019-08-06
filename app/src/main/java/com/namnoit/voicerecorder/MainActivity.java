@@ -7,7 +7,6 @@ import android.app.Dialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.net.ConnectivityManager;
 import android.net.Uri;
@@ -70,15 +69,12 @@ public class MainActivity extends AppCompatActivity
     private static final int SIGN_IN_REQUEST_CODE = 101;
     private static int BACKUP_SIGN_IN_REQUEST_CODE = 102;
     private static int RESTORE_SIGN_IN_REQUEST_CODE = 103;
-    public static final String PREF_NAME = "config";
-    public static final String KEY_QUALITY = "quality";
-    public static final String KEY_STATUS = "status";
+    private SharedPreferenceManager mPref;
     public static final int QUALITY_GOOD = 0;
     public static final int QUALITY_SMALL = 1;
     private static final String DIR = Environment.getExternalStorageDirectory().getAbsolutePath();
     private static final String APP_FOLDER = "Ez Voice Recorder";
     public static final String APP_DIR = DIR + File.separator + APP_FOLDER;
-    private SharedPreferences pref;
     private int qualityChosen;
     private TextView navEmail, navProfileName;
     private ImageView profilePicture;
@@ -159,8 +155,8 @@ public class MainActivity extends AppCompatActivity
                 .requestScopes(new Scope(DriveScopes.DRIVE_APPDATA),new Scope(DriveScopes.DRIVE_FILE))
                 .build();
         mGoogleSignInClient = GoogleSignIn.getClient(this, gso);
-        pref = getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE);
-        qualityChosen = pref.getInt(KEY_QUALITY,QUALITY_GOOD);
+        mPref = SharedPreferenceManager.getInstance(getApplicationContext());
+        qualityChosen = mPref.getInt(SharedPreferenceManager.Key.QUALITY_KEY,QUALITY_GOOD);
 
         PagerAdapter sectionsPagerAdapter = new PagerAdapter(getSupportFragmentManager());
         sectionsPagerAdapter.addFragment(new RecordFragment(),getResources().getString(R.string.tab_record));
@@ -255,22 +251,19 @@ public class MainActivity extends AppCompatActivity
                     .setTitle(getResources().getString(R.string.text_quality_title))
                     .setSingleChoiceItems(items, qualityChosen, new DialogInterface.OnClickListener() {
                         public void onClick(DialogInterface dialog, int item) {
-                            // Your code
                             qualityChosen = item;
                         }
                     })
                     .setPositiveButton(R.string.ok, new DialogInterface.OnClickListener() {
                         @Override
                         public void onClick(DialogInterface dialog, int which) {
-                            SharedPreferences.Editor editor = pref.edit();
-                            editor.putInt(KEY_QUALITY, qualityChosen);
-                            editor.apply();
+                            mPref.put(SharedPreferenceManager.Key.QUALITY_KEY,qualityChosen);
                         }
                     })
                     .setOnDismissListener(new DialogInterface.OnDismissListener() {
                         @Override
                         public void onDismiss(DialogInterface dialog) {
-                            qualityChosen = pref.getInt(KEY_QUALITY,QUALITY_GOOD);
+                            qualityChosen = mPref.getInt(SharedPreferenceManager.Key.QUALITY_KEY,QUALITY_GOOD);
                         }
                     })
                     .create();

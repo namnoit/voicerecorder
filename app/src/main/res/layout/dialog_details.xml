@@ -24,7 +24,8 @@
         android:layout_margin="10dp"
         android:layout_below="@id/details_title"
         android:layout_alignStart="@id/details_title"
-        app:srcCompat="@drawable/ic_title" />
+        app:srcCompat="@drawable/ic_title"
+        android:contentDescription="@string/icon_description" />
 
     <ImageView
         android:id="@+id/image_details_duration"
@@ -33,7 +34,8 @@
         android:layout_margin="10dp"
         android:layout_below="@id/image_details_title"
         android:layout_alignStart="@id/details_title"
-        app:srcCompat="@drawable/ic_duration" />
+        app:srcCompat="@drawable/ic_duration"
+        android:contentDescription="@string/icon_description" />
 
     <ImageView
         android:id="@+id/image_details_time"
@@ -42,7 +44,8 @@
         android:layout_margin="10dp"
         android:layout_below="@id/image_details_duration"
         android:layout_alignStart="@id/details_title"
-        app:srcCompat="@drawable/ic_date" />
+        app:srcCompat="@drawable/ic_date"
+        android:contentDescription="@string/icon_description" />
 
     <ImageView
         android:id="@+id/image_details_format"
@@ -51,7 +54,8 @@
         android:layout_margin="10dp"
         android:layout_below="@id/image_details_time"
         android:layout_alignStart="@id/details_title"
-        app:srcCompat="@drawable/ic_music" />
+        app:srcCompat="@drawable/ic_music"
+        android:contentDescription="@string/icon_description" />
 
     <ImageView
         android:id="@+id/image_details_capacity"
@@ -60,7 +64,8 @@
         android:layout_margin="10dp"
         android:layout_below="@id/image_details_format"
         android:layout_alignStart="@id/details_title"
-        app:srcCompat="@drawable/ic_storage" />
+        app:srcCompat="@drawable/ic_storage"
+        android:contentDescription="@string/icon_description" />
 
     <TextView
         android:id="@+id/text_details_title"
@@ -159,7 +164,8 @@
         android:layout_toStartOf="@id/image_local"
         android:scaleY="0.5"
         android:scaleX="0.5"
-        app:srcCompat="@drawable/drive" />
+        app:srcCompat="@drawable/drive"
+        android:contentDescription="@string/icon_description" />
 
     <ImageView
         android:id="@+id/image_local"
@@ -168,5 +174,6 @@
         android:layout_marginTop="15dp"
         android:layout_marginEnd="10dp"
         android:layout_alignParentEnd="true"
-        app:srcCompat="@drawable/ic_phone" />
+        app:srcCompat="@drawable/ic_phone"
+        android:contentDescription="@string/icon_description" />
 </RelativeLayout>

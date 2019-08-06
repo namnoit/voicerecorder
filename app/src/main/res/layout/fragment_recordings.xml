@@ -9,7 +9,9 @@
         android:id="@+id/list_recordings"
         android:clipToPadding="false"
         android:layout_width="match_parent"
-        android:layout_height="match_parent" />
+        android:layout_height="match_parent"
+        android:layout_above="@id/playback"
+        android:layout_alignWithParentIfMissing="true"/>
 
     <include
         layout="@layout/layout_play_recording"

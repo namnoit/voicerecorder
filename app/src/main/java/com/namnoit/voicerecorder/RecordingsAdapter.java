@@ -4,7 +4,6 @@ import android.app.ActivityManager;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.net.ConnectivityManager;
 import android.net.Uri;
 import android.os.StrictMode;
@@ -49,7 +48,6 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
     private int selectedPosition = RecyclerView.NO_POSITION;
     private ArrayList<Recording> recordingsList;
     private Context context;
-    private SharedPreferences pref;
     private RecordingsDbHelper db;
 
 
@@ -57,9 +55,9 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
         recordingsList = recordings;
         context = c;
         db = new RecordingsDbHelper(context);
-        pref = context.getSharedPreferences(MainActivity.PREF_NAME,Context.MODE_PRIVATE);
-        if (isServiceRunning(RecordingPlaybackService.class))
-            selectedPosition = pref.getInt(RecordingsFragment.KEY_CURRENT_POSITION_ADAPTER,RecyclerView.NO_POSITION);
+        if (isServiceRunning(RecordingPlaybackService.class)) {
+            selectedPosition = SharedPreferenceManager.getInstance().getInt(SharedPreferenceManager.Key.CURRENT_POSITION_KEY,RecyclerView.NO_POSITION);
+        }
     }
 
     @NonNull
@@ -115,9 +113,7 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
                     notifyItemChanged(selectedPosition);
                     selectedPosition = position;
                     notifyItemChanged(selectedPosition);
-                    SharedPreferences.Editor editor = pref.edit();
-                    editor.putInt(RecordingsFragment.KEY_CURRENT_POSITION_ADAPTER, position);
-                    editor.apply();
+                    SharedPreferenceManager.getInstance().put(SharedPreferenceManager.Key.CURRENT_POSITION_ADAPTER_KEY,position);
                     if (isServiceRunning(RecorderService.class)) {
                         Intent stopServiceIntent = new Intent(context, RecorderService.class);
                         context.stopService(stopServiceIntent);

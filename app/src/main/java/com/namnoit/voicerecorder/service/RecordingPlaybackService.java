@@ -5,9 +5,7 @@ import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
-import android.content.Context;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.os.Build;
@@ -21,6 +19,7 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import com.namnoit.voicerecorder.MainActivity;
 import com.namnoit.voicerecorder.R;
+import com.namnoit.voicerecorder.SharedPreferenceManager;
 import com.namnoit.voicerecorder.ui.main.RecordingsFragment;
 
 import java.io.File;
@@ -33,6 +32,7 @@ public class RecordingPlaybackService extends Service {
     private Handler handler = new Handler();
     private int duration = 0;
     private String fileName;
+    private SharedPreferenceManager mPref;
     private Intent broadcastUpdateTime = new Intent(RecordingsFragment.BROADCAST_UPDATE_SEEK_BAR);
     private Intent broadcastFinishPlaying = new Intent(RecordingsFragment.BROADCAST_FINISH_PLAYING);
     private Intent broadcastStartPlaying = new Intent(RecordingsFragment.BROADCAST_START_PLAYING);
@@ -53,7 +53,7 @@ public class RecordingPlaybackService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
-
+        mPref = SharedPreferenceManager.getInstance();
         mediaPlayer = new MediaPlayer();
         mediaPlayer.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
             @Override
@@ -64,12 +64,10 @@ public class RecordingPlaybackService extends Service {
                 mp.start();
                 LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(broadcastStartPlaying);
                 handler.postDelayed(updateSeekBarTask,0);
-                SharedPreferences pref = getSharedPreferences(MainActivity.PREF_NAME, Context.MODE_PRIVATE);
-                SharedPreferences.Editor editor = pref.edit();
-                editor.putInt(MainActivity.KEY_STATUS,RecordingsFragment.STATUS_PLAYING);
-                editor.putString(RecordingsFragment.KEY_FILE_NAME,fileName);
-                editor.putInt(RecordingsFragment.KEY_DURATION,duration);
-                editor.apply();
+
+                mPref.put(SharedPreferenceManager.Key.STATUS_KEY,RecordingsFragment.STATUS_PLAYING);
+                mPref.put(SharedPreferenceManager.Key.FILE_NAME_KEY,fileName);
+                mPref.put(SharedPreferenceManager.Key.DURATION_KEY,duration);
             }
         });
         mediaPlayer.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
@@ -107,12 +105,9 @@ public class RecordingPlaybackService extends Service {
                 handler.removeCallbacks(updateSeekBarTask);
                 currentPosition = mediaPlayer.getCurrentPosition();
                 mediaPlayer.pause();
-                SharedPreferences pref = getSharedPreferences(MainActivity.PREF_NAME, Context.MODE_PRIVATE);
-                SharedPreferences.Editor editor = pref.edit();
-                editor.putInt(MainActivity.KEY_STATUS,RecordingsFragment.STATUS_PAUSED);
-                editor.putInt(RecordingsFragment.KEY_CURRENT_POSITION,currentPosition);
-                editor.apply();
-                broadcastPaused.putExtra(RecordingsFragment.KEY_CURRENT_POSITION,currentPosition);
+                mPref.put(SharedPreferenceManager.Key.STATUS_KEY,RecordingsFragment.STATUS_PAUSED);
+                mPref.put(SharedPreferenceManager.Key.CURRENT_POSITION_KEY,currentPosition);
+                broadcastPaused.putExtra(SharedPreferenceManager.Key.CURRENT_POSITION_KEY,currentPosition);
                 LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(broadcastPaused);
             }
         }
@@ -122,16 +117,13 @@ public class RecordingPlaybackService extends Service {
                 handler.post(updateSeekBarTask);
                 mediaPlayer.seekTo(currentPosition);
                 mediaPlayer.start();
-                SharedPreferences pref = getSharedPreferences(MainActivity.PREF_NAME, Context.MODE_PRIVATE);
-                SharedPreferences.Editor editor = pref.edit();
-                editor.putInt(MainActivity.KEY_STATUS,RecordingsFragment.STATUS_PLAYING);
-                editor.apply();
+                mPref.put(SharedPreferenceManager.Key.STATUS_KEY,RecordingsFragment.STATUS_PLAYING);
             }
         }
         if (Objects.equals(intent.getAction(), ACTION_SEEK)) {
             int seekTo = intent.getIntExtra(RecordingsFragment.KEY_SEEK_TO_POSITION,0);
             if (mediaPlayer != null) {
-                currentPosition = Math.round((float)seekTo/100*duration);
+                currentPosition = Math.round((float)seekTo);
                 mediaPlayer.seekTo(currentPosition);
             }
         }
@@ -144,10 +136,7 @@ public class RecordingPlaybackService extends Service {
         super.onDestroy();
         handler.removeCallbacks(updateSeekBarTask);
         LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(broadcastFinishPlaying);
-        SharedPreferences pref = getSharedPreferences(MainActivity.PREF_NAME, Context.MODE_PRIVATE);
-        SharedPreferences.Editor editor = pref.edit();
-        editor.putInt(MainActivity.KEY_STATUS,RecordingsFragment.STATUS_STOPPED);
-        editor.apply();
+        mPref.put(SharedPreferenceManager.Key.STATUS_KEY,RecordingsFragment.STATUS_STOPPED);
         mediaPlayer.release();
         mediaPlayer = null;
     }

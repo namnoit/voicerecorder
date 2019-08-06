@@ -6,6 +6,7 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.Color;
 import android.media.MediaMetadataRetriever;
 import android.os.Build;
 import android.os.Handler;
@@ -102,6 +103,9 @@ public class DriveServiceHelper {
                             .setContentTitle(context.getResources().getString(R.string.app_name))
                             .setContentText(context.getText(R.string.backup_in_progress))
                             .setSmallIcon(R.drawable.ic_launcher_foreground)
+                            .setColor(context.getResources().getColor(R.color.colorPrimary))
+                            .setPriority(NotificationCompat.PRIORITY_HIGH)
+                            .setDefaults(Notification.DEFAULT_ALL)
                             .build();
             NotificationManagerCompat notificationManager = NotificationManagerCompat.from(context);
             notificationManager.notify(NOTIFICATION_ID+1,pushNotification);
@@ -275,12 +279,20 @@ public class DriveServiceHelper {
                     mDriveService.files().create(fileMetadata, mediaContent)
                             .setFields("id, parents")
                             .execute();
-
+                    Intent notificationIntent = new Intent(context, MainActivity.class);
+                    notificationIntent.setAction(Intent.ACTION_MAIN);
+                    notificationIntent.addCategory(Intent.CATEGORY_LAUNCHER);
+                    notificationIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    PendingIntent pendingIntent =
+                            PendingIntent.getActivity(context, 0, notificationIntent, 0);
                     Notification notification =
                             new NotificationCompat.Builder(context, DEFAULT_CHANNEL_ID)
                                     .setContentTitle(fileName)
                                     .setContentText(context.getText(R.string.notification_text_uploaded))
                                     .setSmallIcon(R.drawable.ic_launcher_foreground)
+                                    .setContentIntent(pendingIntent)
+                                    .setAutoCancel(true)
+                                    .setColor(context.getResources().getColor(R.color.colorPrimary))
                                     .build();
                     NotificationManagerCompat notificationManager = NotificationManagerCompat.from(context);
                     notificationManager.notify(++NOTIFICATION_ID,notification);
@@ -290,7 +302,6 @@ public class DriveServiceHelper {
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
-
             }
         }
     }
@@ -355,6 +366,7 @@ public class DriveServiceHelper {
                                 .setSmallIcon(R.drawable.ic_launcher_foreground)
                                 .setContentIntent(pendingIntent)
                                 .setAutoCancel(true)
+                                .setColor(context.getResources().getColor(R.color.colorPrimary))
                                 .build();
                 NotificationManagerCompat notificationManager = NotificationManagerCompat.from(context);
                 notificationManager.notify(++NOTIFICATION_ID,notification);
@@ -383,6 +395,9 @@ public class DriveServiceHelper {
                             .setContentTitle(context.getResources().getString(R.string.app_name))
                             .setContentText(context.getText(R.string.sync_in_progress))
                             .setSmallIcon(R.drawable.ic_launcher_foreground)
+                            .setPriority(NotificationCompat.PRIORITY_HIGH)
+                            .setDefaults(Notification.DEFAULT_ALL)
+                            .setColor(context.getResources().getColor(R.color.colorPrimary))
                             .build();
             NotificationManagerCompat notificationManager = NotificationManagerCompat.from(context);
             notificationManager.notify(NOTIFICATION_ID,notification);

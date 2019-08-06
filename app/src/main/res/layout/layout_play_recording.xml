@@ -25,7 +25,8 @@
                 android:layout_alignTop="@id/recordingTitle"
                 android:layout_marginEnd="10dp"
                 android:background="@null"
-                app:srcCompat="@drawable/ic_close" />
+                app:srcCompat="@drawable/ic_close"
+                android:contentDescription="@string/close_recording_button_desc"/>
 
             <ImageButton
                 android:id="@+id/playRecordingButton"
@@ -34,7 +35,8 @@
                 android:layout_alignTop="@id/recordingTitle"
                 android:layout_toStartOf="@id/closeRecordingButton"
                 android:background="@null"
-                app:srcCompat="@drawable/ic_pause_white" />
+                app:srcCompat="@drawable/ic_pause_white"
+                android:contentDescription="@string/play_recording_button_desc" />
 
             <TextView
                 android:id="@+id/recordingTitle"
@@ -42,7 +44,7 @@
                 android:layout_height="wrap_content"
                 android:layout_alignParentStart="true"
                 android:layout_marginStart="10dp"
-                android:layout_marginTop="14dp"
+                android:layout_marginTop="12dp"
                 android:layout_marginEnd="10dp"
                 android:layout_marginBottom="10dp"
                 android:layout_toStartOf="@id/playRecordingButton"
@@ -56,7 +58,7 @@
                 android:layout_height="wrap_content"
                 android:layout_alignTop="@id/recordingCurrent"
                 android:layout_alignEnd="@id/seekBar"
-                android:text="00:00:00"
+                android:text="@string/start_time"
                 android:textAlignment="textEnd"
                 android:textColor="@color/colorFab" />
 
@@ -67,7 +69,7 @@
                 android:layout_below="@id/seekBar"
                 android:layout_alignStart="@id/seekBar"
                 android:layout_marginBottom="5dp"
-                android:text="00:00:00"
+                android:text="@string/start_time"
                 android:textAlignment="textStart"
                 android:textColor="@color/colorFab" />
 

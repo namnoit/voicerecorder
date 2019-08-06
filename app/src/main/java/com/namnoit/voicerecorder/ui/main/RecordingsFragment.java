@@ -6,13 +6,11 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.SharedPreferences;
 import android.net.ConnectivityManager;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.ViewTreeObserver;
 import android.widget.ImageButton;
 import android.widget.SeekBar;
 import android.widget.TextView;
@@ -31,9 +29,9 @@ import com.google.api.client.googleapis.extensions.android.gms.auth.GoogleAccoun
 import com.google.api.client.json.gson.GsonFactory;
 import com.google.api.client.util.ExponentialBackOff;
 import com.google.api.services.drive.DriveScopes;
-import com.namnoit.voicerecorder.MainActivity;
 import com.namnoit.voicerecorder.R;
 import com.namnoit.voicerecorder.RecordingsAdapter;
+import com.namnoit.voicerecorder.SharedPreferenceManager;
 import com.namnoit.voicerecorder.data.Recording;
 import com.namnoit.voicerecorder.data.RecordingsDbHelper;
 import com.namnoit.voicerecorder.drive.DriveServiceHelper;
@@ -50,12 +48,11 @@ public class RecordingsFragment extends Fragment {
     private ArrayList<Recording> list;
     private RecordingsDbHelper db;
     private DriveServiceHelper mDriveHelper;
-    private SharedPreferences pref;
+    private SharedPreferenceManager mPref;
     private ImageButton playRecordingButton;
     private SeekBar seekBar;
     private TextView textTitle, textCurrentPosition, textDuration;
     private View playback;
-    private ViewTreeObserver vto; // Set Padding for recyclerView
     private int status = STATUS_PAUSED;
     public static final int STATUS_PLAYING = 0;
     public static final int STATUS_PAUSED = 1;
@@ -77,7 +74,6 @@ public class RecordingsFragment extends Fragment {
     public static final String KEY_FILE_ID = "file_id";
     public static final String KEY_SEEK_TO_POSITION = "seek";
     // To show current item selected in list
-    public static final String KEY_CURRENT_POSITION_ADAPTER = "selected_position";
     private int durationMillis = 0;
     private int curMillis = 0;
     private String recordingName = "";
@@ -152,12 +148,13 @@ public class RecordingsFragment extends Fragment {
                 }
                 else if (intent.getAction().equals(BROADCAST_START_PLAYING)) {
                     status = STATUS_PLAYING;
+                    durationMillis = intent.getIntExtra(KEY_DURATION, 0);
+                    seekBar.setMax(durationMillis);
                     seekBar.setProgress(0);
                     playback.setVisibility(View.VISIBLE);
                     playback.setEnabled(true);
                     textTitle.setText(recordingName = intent.getStringExtra(KEY_FILE_NAME));
-                    durationMillis = intent.getIntExtra(KEY_DURATION, 0);
-                    textDuration.setText(seconds2String(Math.round(durationMillis / 1000f)));
+                    textDuration.setText(milliSeconds2String(durationMillis));
                     playRecordingButton.setImageResource(R.drawable.ic_pause_white);
                 }
                 else if (intent.getAction().equals(BROADCAST_UPDATE_SEEK_BAR)) {
@@ -166,17 +163,16 @@ public class RecordingsFragment extends Fragment {
                         playRecordingButton.setImageResource(R.drawable.ic_pause_white);
                     }
                     curMillis = intent.getIntExtra(KEY_CURRENT_POSITION, 0);
-                    seekBar.setProgress(curMillis * 100 / durationMillis);
-                    textCurrentPosition.setText(seconds2String(Math.round(curMillis / 1000f)));
+                    seekBar.setProgress(curMillis);
+                    textCurrentPosition.setText(milliSeconds2String(curMillis));
                 }
                 else if (intent.getAction().equals(BROADCAST_FINISH_PLAYING)) {
-                    seekBar.setProgress(100);
+                    seekBar.setProgress(durationMillis);
                     status = STATUS_STOPPED;
-                    textCurrentPosition.setText("00:00:00");
-                    textDuration.setText("00:00:00");
+                    textCurrentPosition.setText(getResources().getString(R.string.start_time));
+                    textDuration.setText(getResources().getString(R.string.start_time));
                     playback.setVisibility(View.GONE);
                     playback.setEnabled(false);
-                    vto.dispatchOnGlobalLayout();
                 }
                 else if (intent.getAction().equals(BROADCAST_PAUSED)) {
                     status = STATUS_PAUSED;
@@ -216,25 +212,26 @@ public class RecordingsFragment extends Fragment {
         LocalBroadcastManager.getInstance(requireContext()).registerReceiver(receiver,
                 new IntentFilter(RecordingsFragment.BROADCAST_DOWNLOAD_REQUEST));
 
-        status = pref.getInt(MainActivity.KEY_STATUS,STATUS_STOPPED);
+        status = mPref.getInt(SharedPreferenceManager.Key.STATUS_KEY,STATUS_STOPPED);
         if (!isServiceRunning()){
             status = STATUS_STOPPED;
             playback.setEnabled(false);
             playback.setVisibility(View.GONE);
-            vto.dispatchOnGlobalLayout();
         }else if (status == STATUS_PAUSED){
-            curMillis = pref.getInt(KEY_CURRENT_POSITION,0);
-            recordingName = pref.getString(KEY_FILE_NAME,"");
-            durationMillis = pref.getInt(KEY_DURATION,0);
+            curMillis = mPref.getInt(SharedPreferenceManager.Key.CURRENT_POSITION_KEY);
+            recordingName = mPref.getString(SharedPreferenceManager.Key.FILE_NAME_KEY);
+            durationMillis = mPref.getInt(SharedPreferenceManager.Key.DURATION_KEY);
+            seekBar.setMax(durationMillis);
             textTitle.setText(recordingName);
-            textDuration.setText(seconds2String(Math.round(durationMillis/1000f)));
-            textCurrentPosition.setText(seconds2String(Math.round(curMillis/1000f)));
-            seekBar.setProgress(curMillis*100/durationMillis);
+            textDuration.setText(milliSeconds2String(durationMillis));
+            textCurrentPosition.setText(milliSeconds2String(curMillis));
+            seekBar.setProgress(curMillis);
             playRecordingButton.setImageResource(R.drawable.ic_play);
         } else{
-            durationMillis = pref.getInt(KEY_DURATION,0);
-            textTitle.setText(pref.getString(KEY_FILE_NAME,""));
-            textDuration.setText(seconds2String(Math.round(durationMillis/1000f)));
+            durationMillis = mPref.getInt(SharedPreferenceManager.Key.DURATION_KEY);
+            seekBar.setMax(durationMillis);
+            textTitle.setText(mPref.getString(SharedPreferenceManager.Key.FILE_NAME_KEY));
+            textDuration.setText(milliSeconds2String(durationMillis));
             playRecordingButton.setImageResource(R.drawable.ic_pause_white);
         }
     }
@@ -250,7 +247,7 @@ public class RecordingsFragment extends Fragment {
                              Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_recordings, container, false);
 
-        pref = requireContext().getSharedPreferences(MainActivity.PREF_NAME, Context.MODE_PRIVATE);
+        mPref = SharedPreferenceManager.getInstance(requireContext());
         db = new RecordingsDbHelper(getContext());
         list = db.getAll();
         seekBar = view.findViewById(R.id.seekBar);
@@ -258,7 +255,7 @@ public class RecordingsFragment extends Fragment {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
                 if (fromUser){
-                    textCurrentPosition.setText(seconds2String(Math.round(progress/100000f*durationMillis)));
+                    textCurrentPosition.setText(milliSeconds2String(progress));
                     Intent playbackIntent = new Intent(getContext(), RecordingPlaybackService.class);
                     playbackIntent.setAction(RecordingPlaybackService.ACTION_SEEK);
                     playbackIntent.putExtra(KEY_SEEK_TO_POSITION,progress);
@@ -314,16 +311,6 @@ public class RecordingsFragment extends Fragment {
         recordingsAdapter = new RecordingsAdapter(list, getContext());
         recyclerView.setAdapter(recordingsAdapter);
         playback = view.findViewById(R.id.playback);
-
-        vto = playback.getViewTreeObserver();
-        vto.addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
-            @Override
-            public void onGlobalLayout() {
-                if (playback.getVisibility() == View.GONE)
-                    recyclerView.setPadding(0, 0, 0, 0);
-                else recyclerView.setPadding(0, 0, 0, playback.getHeight());
-            }
-        });
         return view;
     }
 
@@ -359,7 +346,8 @@ public class RecordingsFragment extends Fragment {
         return cm != null && cm.getActiveNetworkInfo() != null;
     }
 
-    private String seconds2String(int seconds){
+    private String milliSeconds2String(int milliSeconds){
+        int seconds = Math.round(milliSeconds/1000f);
         return String.format(Locale.getDefault(),
                 "%02d:%02d:%02d",
                 (seconds / (60 * 60)) % 24,

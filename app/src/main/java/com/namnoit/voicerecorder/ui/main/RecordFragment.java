@@ -5,7 +5,6 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.SharedPreferences;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.SystemClock;
@@ -20,8 +19,8 @@ import androidx.fragment.app.Fragment;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
-import com.namnoit.voicerecorder.MainActivity;
 import com.namnoit.voicerecorder.R;
+import com.namnoit.voicerecorder.SharedPreferenceManager;
 import com.namnoit.voicerecorder.service.RecorderService;
 import com.namnoit.voicerecorder.service.RecordingPlaybackService;
 
@@ -33,11 +32,11 @@ import java.util.Locale;
 public class RecordFragment extends Fragment {
     private FloatingActionButton recordPauseButton, stopButton;
     private TextView textTime;
-    public static final String KEY_RECORD_STATUS = "RECORD_STATUS";
     public static final int STATUS_RECORDING = 2;
     public static final int STATUS_PAUSED = 1;
     public static final int STATUS_STOPPED = 0;
     private int recordStatus;
+    private SharedPreferenceManager mPref;
     // Prevent double click
     private long mRecordLastClickTime = 0;
     private long mStopLastClickTime = 0;
@@ -49,7 +48,7 @@ public class RecordFragment extends Fragment {
                 stopButton.hide();
                 recordPauseButton.setImageResource(R.drawable.ic_record);
                 recordPauseButton.setEnabled(true);
-                textTime.setText("00:00:00");
+                textTime.setText(getResources().getString(R.string.start_time));
                 Toast.makeText(getContext(), getResources().getText(R.string.toast_recording_saved).toString(), Toast.LENGTH_SHORT).show();
             }
             else if (intent.getAction() != null && intent.getAction().equals(RecorderService.BROADCAST_UPDATE_TIME)) {
@@ -74,6 +73,7 @@ public class RecordFragment extends Fragment {
                 recordPauseButton.setImageResource(R.drawable.ic_record);
             }
             else if (intent.getAction() != null && intent.getAction().equals(RecorderService.ACTION_RESUME_RECORDING)){
+                Toast.makeText(getContext(), getResources().getText(R.string.toast_recording_paused).toString(), Toast.LENGTH_SHORT).show();
                 recordStatus = STATUS_RECORDING;
                 recordPauseButton.setImageResource(R.drawable.ic_pause);
             }
@@ -93,13 +93,10 @@ public class RecordFragment extends Fragment {
 
         if (isServiceRunning(RecorderService.class)) {
             stopButton.show();
-            SharedPreferences pref = requireContext()
-                    .getSharedPreferences(MainActivity.PREF_NAME, Context.MODE_PRIVATE);
-            recordStatus = pref.getInt(KEY_RECORD_STATUS,STATUS_RECORDING);
+            recordStatus = mPref.getInt(SharedPreferenceManager.Key.RECORD_STATUS_KEY,STATUS_RECORDING);
             if (recordStatus == STATUS_RECORDING){
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
                     recordPauseButton.setImageResource(R.drawable.ic_pause);
-
                 } else{
                     recordPauseButton.setEnabled(false);
                 }
@@ -107,7 +104,7 @@ public class RecordFragment extends Fragment {
             // Paused
             else {
                 recordPauseButton.setImageResource(R.drawable.ic_record);
-                int seconds = pref.getInt(RecorderService.PAUSE_POSITION,0);
+                int seconds = mPref.getInt(SharedPreferenceManager.Key.PAUSE_POSITION);
                 String dur = String.format(Locale.getDefault(),
                         "%02d:%02d:%02d",
                         (seconds / (60 * 60)) % 24,
@@ -119,7 +116,7 @@ public class RecordFragment extends Fragment {
         } else {
             recordPauseButton.setImageResource(R.drawable.ic_record);
             recordPauseButton.setEnabled(true);
-            textTime.setText("00:00:00");
+            textTime.setText(getResources().getString(R.string.start_time));
             stopButton.hide();
             recordStatus = STATUS_STOPPED;
         }
@@ -140,7 +137,7 @@ public class RecordFragment extends Fragment {
         recordPauseButton = root.findViewById(R.id.button_record_pause);
         stopButton = root.findViewById(R.id.button_stop);
         textTime = root.findViewById(R.id.textTime);
-
+        mPref = SharedPreferenceManager.getInstance(requireContext());
         recordPauseButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
