@@ -88,7 +88,13 @@ public class RecordingPlaybackService extends Service {
             mediaPlayer.reset();
             mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
             try {
-                mediaPlayer.setDataSource(MainActivity.APP_DIR + File.separator + fileName);
+                mediaPlayer.setDataSource((Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q ?
+                        Objects.requireNonNull(getApplicationContext().getExternalFilesDir(null)).getAbsolutePath() +
+                                File.separator +
+                                MainActivity.APP_FOLDER :
+                        MainActivity.APP_DIR) +
+                        File.separator +
+                        fileName);
                 mediaPlayer.prepareAsync();
             } catch (IOException e) {
                 e.printStackTrace();

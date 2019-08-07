@@ -6,6 +6,7 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.net.ConnectivityManager;
 import android.net.Uri;
+import android.os.Build;
 import android.os.StrictMode;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -49,6 +50,7 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
     private ArrayList<Recording> recordingsList;
     private Context context;
     private RecordingsDbHelper db;
+    private String appDir;
 
 
     public RecordingsAdapter(ArrayList<Recording> recordings, Context c){
@@ -58,6 +60,11 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
         if (isServiceRunning(RecordingPlaybackService.class)) {
             selectedPosition = SharedPreferenceManager.getInstance().getInt(SharedPreferenceManager.Key.CURRENT_POSITION_KEY,RecyclerView.NO_POSITION);
         }
+        appDir = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q?
+                Objects.requireNonNull(context.getExternalFilesDir(null)).getAbsolutePath() +
+                        File.separator +
+                        MainActivity.APP_FOLDER :
+                MainActivity.APP_DIR;
     }
 
     @NonNull
@@ -108,7 +115,7 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
                     }
                     return;
                 }
-                File file = new File(MainActivity.APP_DIR + File.separator + recordingsList.get(position).getName());
+                File file = new File(appDir, recordingsList.get(position).getName());
                 if (!isFileChanged(file,recordingsList.get(position).getHashValue(),position)){
                     notifyItemChanged(selectedPosition);
                     selectedPosition = position;
@@ -171,7 +178,7 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
                             // Share
                             case 0:
                                 File recording = new File(
-                                        MainActivity.APP_DIR,
+                                        appDir,
                                         holder.textName.getText().toString());
                                 if (!isFileChanged(recording, recordingsList.get(position).getHashValue(), position)) {
                                     StrictMode.VmPolicy.Builder builder = new StrictMode.VmPolicy.Builder();
@@ -187,7 +194,7 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
                             // Rename
                             case 1:
                                 final File oldFile = new File(
-                                        MainActivity.APP_DIR + File.separator + holder.textName.getText());
+                                        appDir, holder.textName.getText().toString());
                                 if (!isFileChanged(oldFile, recordingsList.get(position).getHashValue(), position)) {
                                     final EditText textFileName = new EditText(context);
                                     textFileName.setText(fileName[0]);
@@ -201,7 +208,7 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
                                                 public void onClick(DialogInterface dialog, int which) {
                                                     String newName = textFileName.getText() + "." + fileName[1];
                                                     File newFile = new File(
-                                                            MainActivity.APP_DIR + File.separator + newName);
+                                                            appDir, newName);
                                                     if (oldFile.renameTo(newFile)) {
                                                         db.updateName(recordingsList.get(position).getID(), newName);
                                                         recordingsList.get(position).setName(newName);
@@ -281,7 +288,7 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
                                 break;
                             // Delete
                             case 3:
-                                final File deleteFile = new File(MainActivity.APP_DIR + File.separator + holder.textName.getText());
+                                final File deleteFile = new File(appDir, holder.textName.getText().toString());
                                 if (!isFileChanged(deleteFile, recordingsList.get(position).getHashValue(), position)) {
                                     AlertDialog.Builder deleteDialogBuilder = new AlertDialog.Builder(context);
                                     deleteDialogBuilder.setTitle(R.string.delete_title)

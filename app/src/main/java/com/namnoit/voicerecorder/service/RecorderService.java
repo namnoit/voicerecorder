@@ -53,6 +53,7 @@ public class RecorderService extends Service {
     public static final String ACTION_PAUSE_RECORDING = "PAUSE_RECORDING";
     public static final String ACTION_RESUME_RECORDING = "RESUME_RECORDING";
     private SharedPreferenceManager mPref;
+    private String appDir;
     long timeInMilliseconds = 0L;
     private MediaRecorder recorder;
     private String fileName = null;
@@ -95,6 +96,11 @@ public class RecorderService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        appDir = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q?
+                Objects.requireNonNull(getApplicationContext().getExternalFilesDir(null)).getAbsolutePath() +
+                        File.separator +
+                        MainActivity.APP_FOLDER :
+                MainActivity.APP_DIR;
         if (Objects.equals(intent.getAction(), RecordingPlaybackService.ACTION_STOP_SERVICE)) {
             handler.removeCallbacks(sendUpdatesToUI);
             recorder.stop();
@@ -144,10 +150,10 @@ public class RecorderService extends Service {
             recorder.release();
             recorder = null;
             mPref.put(SharedPreferenceManager.Key.RECORD_STATUS_KEY,RecordFragment.STATUS_STOPPED);
-            File file = new File(MainActivity.APP_DIR + File.separator + fileName);
+            File file = new File(appDir, fileName);
             long length = file.length();
             MediaMetadataRetriever metadataRetriever = new MediaMetadataRetriever();
-            metadataRetriever.setDataSource(MainActivity.APP_DIR + File.separator + fileName);
+            metadataRetriever.setDataSource(appDir + File.separator + fileName);
             String duration = metadataRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION);
             String dateNoFormat = metadataRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DATE);
             MessageDigest digest;
@@ -225,7 +231,7 @@ public class RecorderService extends Service {
                     fileName += "." + AAC;
                     break;
             }
-            recorder.setOutputFile(MainActivity.APP_DIR + File.separator + fileName);
+            recorder.setOutputFile(appDir + File.separator + fileName);
             try {
                 recorder.prepare();
                 recorder.start();
@@ -252,10 +258,10 @@ public class RecorderService extends Service {
     private Runnable saveFileRunnable = new Runnable() {
         @Override
         public void run() {
-            File file = new File(MainActivity.APP_DIR + File.separator + fileName);
+            File file = new File(appDir, fileName);
             long length = file.length();
             MediaMetadataRetriever metadataRetriever = new MediaMetadataRetriever();
-            metadataRetriever.setDataSource(MainActivity.APP_DIR + File.separator + fileName);
+            metadataRetriever.setDataSource(appDir + File.separator + fileName);
             String duration = metadataRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION);
             String dateNoFormat = metadataRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DATE);
             MessageDigest digest;

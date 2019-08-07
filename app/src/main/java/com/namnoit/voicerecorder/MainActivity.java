@@ -10,6 +10,7 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.ConnectivityManager;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
@@ -56,14 +57,14 @@ import com.namnoit.voicerecorder.ui.main.RecordingsFragment;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public class MainActivity extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener {
 
     private String[] appPermissions = {
             Manifest.permission.RECORD_AUDIO,
-            Manifest.permission.WRITE_EXTERNAL_STORAGE,
-            Manifest.permission.READ_EXTERNAL_STORAGE
+            Manifest.permission.WRITE_EXTERNAL_STORAGE
     };
     private static final int PERMISSION_REQUEST_CODE = 100;
     private static final int SIGN_IN_REQUEST_CODE = 101;
@@ -73,7 +74,7 @@ public class MainActivity extends AppCompatActivity
     public static final int QUALITY_GOOD = 0;
     public static final int QUALITY_SMALL = 1;
     private static final String DIR = Environment.getExternalStorageDirectory().getAbsolutePath();
-    private static final String APP_FOLDER = "Ez Voice Recorder";
+    public static final String APP_FOLDER = "Ez Voice Recorder";
     public static final String APP_DIR = DIR + File.separator + APP_FOLDER;
     private int qualityChosen;
     private TextView navEmail, navProfileName;
@@ -106,13 +107,16 @@ public class MainActivity extends AppCompatActivity
             }
         }
         // Create application folder
-        File folder = new File(APP_DIR);
+        File folder;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
+            folder = new File(Objects.requireNonNull(getApplicationContext().getExternalFilesDir(null)).getAbsolutePath(),APP_FOLDER);
+        else
+            folder = new File(APP_DIR);
         if (!folder.exists() && !folder.mkdir()) {
             Toast.makeText(getApplicationContext(),
                     getResources().getString(R.string.create_directory_failed),
                     Toast.LENGTH_SHORT).show();
         }
-
     }
 
     @Override
@@ -383,12 +387,9 @@ public class MainActivity extends AppCompatActivity
                         LocalBroadcastManager.getInstance(MainActivity.this).sendBroadcast(broadcast);
                     }
                 },500);
-
             }
-
         }
     }
-
 
     private boolean isInternetAvailable() {
         ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);

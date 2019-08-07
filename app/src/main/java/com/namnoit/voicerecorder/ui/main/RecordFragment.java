@@ -71,9 +71,9 @@ public class RecordFragment extends Fragment {
             else if (intent.getAction() != null && intent.getAction().equals(RecorderService.ACTION_PAUSE_RECORDING)) {
                 recordStatus = STATUS_PAUSED;
                 recordPauseButton.setImageResource(R.drawable.ic_record);
+                Toast.makeText(getContext(), getResources().getText(R.string.toast_recording_paused).toString(), Toast.LENGTH_SHORT).show();
             }
             else if (intent.getAction() != null && intent.getAction().equals(RecorderService.ACTION_RESUME_RECORDING)){
-                Toast.makeText(getContext(), getResources().getText(R.string.toast_recording_paused).toString(), Toast.LENGTH_SHORT).show();
                 recordStatus = STATUS_RECORDING;
                 recordPauseButton.setImageResource(R.drawable.ic_pause);
             }

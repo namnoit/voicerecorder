@@ -6,7 +6,6 @@ import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
-import android.graphics.Color;
 import android.media.MediaMetadataRetriever;
 import android.os.Build;
 import android.os.Handler;
@@ -48,6 +47,7 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.TimeZone;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -68,9 +68,9 @@ public class DriveServiceHelper {
     private ArrayList<Recording> localList;
     private RecordingsAdapter adapter;
     private RecordingsDbHelper db;
+    private String appDir;
     public DriveServiceHelper(Context c, Drive drive, ArrayList<Recording> list,RecordingsAdapter adapter){
         context = c;
-//        executor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
         mDriveService = drive;
         localList = list;
         this.adapter = adapter;
@@ -93,6 +93,11 @@ public class DriveServiceHelper {
                 manager.createNotificationChannel(pushNotificationChannel);
             }
         }
+        appDir = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q?
+                Objects.requireNonNull(context.getExternalFilesDir(null)).getAbsolutePath() +
+                        File.separator +
+                        MainActivity.APP_FOLDER :
+                MainActivity.APP_DIR;
     }
 
     private Runnable backUpRunnable = new Runnable(){
@@ -269,7 +274,7 @@ public class DriveServiceHelper {
 
         @Override
         public void run() {
-            File file = new File(MainActivity.APP_DIR + File.separator + fileName);
+            File file = new File(appDir,fileName);
             if (file.exists()){
                 com.google.api.services.drive.model.File fileMetadata = new com.google.api.services.drive.model.File();
                 fileMetadata.setName(fileName);
@@ -321,13 +326,13 @@ public class DriveServiceHelper {
                 mDriveService.files().get(fileId)
                         .executeMediaAndDownloadTo(outputStream);
                 byte[] byteArray = outputStream.toByteArray();
-                File file = new File(MainActivity.APP_DIR + File.separator + fileName);
+                File file = new File(appDir, fileName);
                 FileOutputStream fileOutputStream = new FileOutputStream(file);
                 fileOutputStream.write(byteArray);
                 fileOutputStream.close();
 
                 MediaMetadataRetriever metadataRetriever = new MediaMetadataRetriever();
-                metadataRetriever.setDataSource(MainActivity.APP_DIR + File.separator + fileName);
+                metadataRetriever.setDataSource(appDir + File.separator + fileName);
                 String duration = metadataRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION);
                 String dateNoFormat = metadataRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DATE);
                 MessageDigest digest;
