@@ -61,7 +61,6 @@
                 android:id="@+id/buttonMore"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:background="@null"
                 android:paddingTop="18dp"
                 android:paddingBottom="18dp"
                 android:paddingStart="14dp"
@@ -71,6 +70,7 @@
                 android:layout_centerVertical="true"
                 app:srcCompat="@drawable/ic_more"
                 android:focusable="true"
+                android:background="?android:attr/selectableItemBackground"
                 android:contentDescription="@string/icon_description"/>
 
             <ImageView
