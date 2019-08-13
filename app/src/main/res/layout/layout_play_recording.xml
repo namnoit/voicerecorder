@@ -17,26 +17,46 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent">
 
-            <ImageButton
-                android:id="@+id/closeRecordingButton"
+            <FrameLayout
+                android:id="@+id/playRecordingView"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_alignParentEnd="true"
-                android:layout_alignTop="@id/recordingTitle"
-                android:layout_marginEnd="10dp"
-                android:background="@null"
-                app:srcCompat="@drawable/ic_close"
-                android:contentDescription="@string/close_recording_button_desc"/>
-
-            <ImageButton
-                android:id="@+id/playRecordingButton"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_alignTop="@id/recordingTitle"
+                android:layout_alignParentTop="true"
                 android:layout_toStartOf="@id/closeRecordingButton"
-                android:background="@null"
-                app:srcCompat="@drawable/ic_pause_white"
-                android:contentDescription="@string/play_recording_button_desc" />
+                android:background="?android:attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true">
+
+                <ImageButton
+                    android:id="@+id/playRecordingButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:background="@null"
+                    android:layout_margin="5dp"
+                    android:contentDescription="@string/play_recording_button_desc"
+                    app:srcCompat="@drawable/ic_pause_white"
+                    android:clickable="false"/>
+            </FrameLayout>
+
+            <FrameLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:id="@+id/closeRecordingButton"
+                android:layout_alignParentEnd="true"
+                android:layout_alignParentTop="true"
+                android:background="?android:attr/selectableItemBackground"
+                android:clickable="true"
+                android:focusable="true">
+
+                <ImageButton
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:background="@null"
+                    android:layout_margin="5dp"
+                    android:contentDescription="@string/close_recording_button_desc"
+                    app:srcCompat="@drawable/ic_close"
+                    android:clickable="false"/>
+            </FrameLayout>
 
             <TextView
                 android:id="@+id/recordingTitle"
@@ -47,10 +67,10 @@
                 android:layout_marginTop="12dp"
                 android:layout_marginEnd="10dp"
                 android:layout_marginBottom="10dp"
-                android:layout_toStartOf="@id/playRecordingButton"
+                android:layout_toStartOf="@id/playRecordingView"
                 android:maxLines="1"
                 android:textColor="@color/colorFab"
-                android:textSize="20sp" />
+                android:textSize="19sp" />
 
             <TextView
                 android:id="@+id/recordingDuration"

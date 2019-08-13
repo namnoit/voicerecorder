@@ -274,9 +274,10 @@ public class RecordingsFragment extends Fragment {
         textTitle = view.findViewById(R.id.recordingTitle);
         textCurrentPosition = view.findViewById(R.id.recordingCurrent);
         textDuration = view.findViewById(R.id.recordingDuration);
-        ImageButton closeRecordingButton = view.findViewById(R.id.closeRecordingButton);
+        View closeRecordingButton = view.findViewById(R.id.closeRecordingButton);
+        View playRecordingView = view.findViewById(R.id.playRecordingView);
         playRecordingButton = view.findViewById(R.id.playRecordingButton);
-        playRecordingButton.setOnClickListener(new View.OnClickListener() {
+        playRecordingView.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 if (status == STATUS_PLAYING) {
