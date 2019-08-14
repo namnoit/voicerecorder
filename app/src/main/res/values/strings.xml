@@ -4,7 +4,6 @@
     <string name="navigation_drawer_close">Close navigation drawer</string>
     <string name="nav_header_subtitle">By Namnoit</string>
     <string name="nav_header_desc">Navigation header</string>
-    <string name="action_settings">Settings</string>
     <string name="text_quality_title">Recording quality</string>
     <string name="quality_good">High quality (AAC)</string>
     <string name="quality_small">Small size (3GP)</string>

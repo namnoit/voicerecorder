@@ -3,7 +3,6 @@ package com.namnoit.voicerecorder;
 import android.Manifest;
 import android.app.Activity;
 import android.app.ActivityManager;
-import android.app.Dialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -294,7 +293,7 @@ public class MainActivity extends AppCompatActivity
                 profilePicture.setVisibility(View.VISIBLE);
                 Glide.with(this).load(account.getPhotoUrl()).apply(RequestOptions.circleCropTransform()).into(profilePicture);
             }
-            final Dialog dialog = dialogBuilder.setView(convertView)
+            final AlertDialog.Builder accountDialogBuilder = dialogBuilder.setView(convertView)
                     .setTitle(R.string.account)
                     .setNeutralButton(account==null?R.string.sign_in:R.string.switch_account, new DialogInterface.OnClickListener() {
                         @Override
@@ -307,21 +306,7 @@ public class MainActivity extends AppCompatActivity
                                         startActivityForResult(signInIntent, SIGN_IN_REQUEST_CODE);
                                     }
                                 });
-
                             }
-                        }
-                    })
-                    .setNegativeButton(R.string.sign_out, new DialogInterface.OnClickListener() {
-                        @Override
-                        public void onClick(DialogInterface dialogInterface, int i) {
-                            mGoogleSignInClient.signOut().addOnCompleteListener(new OnCompleteListener<Void>() {
-                                @Override
-                                public void onComplete(@NonNull Task<Void> task) {
-                                    updateUI(null);
-                                    Intent broadcast = new Intent(RecordingsFragment.BROADCAST_SIGNED_OUT);
-                                    LocalBroadcastManager.getInstance(MainActivity.this).sendBroadcast(broadcast);
-                                }
-                            });
                         }
                     })
                     .setPositiveButton(R.string.cancel, new DialogInterface.OnClickListener() {
@@ -329,9 +314,23 @@ public class MainActivity extends AppCompatActivity
                         public void onClick(DialogInterface dialogInterface, int i) {
 
                         }
-                    })
-                    .create();
-            dialog.show();
+                    });
+            if (account != null){
+                accountDialogBuilder.setNegativeButton(R.string.sign_out, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialogInterface, int i) {
+                        mGoogleSignInClient.signOut().addOnCompleteListener(new OnCompleteListener<Void>() {
+                            @Override
+                            public void onComplete(@NonNull Task<Void> task) {
+                                updateUI(null);
+                                Intent broadcast = new Intent(RecordingsFragment.BROADCAST_SIGNED_OUT);
+                                LocalBroadcastManager.getInstance(MainActivity.this).sendBroadcast(broadcast);
+                            }
+                        });
+                    }
+                });
+            }
+            accountDialogBuilder.create().show();
         }
         else if (id == R.id.nav_backup){
             sync(true);
@@ -386,7 +385,7 @@ public class MainActivity extends AppCompatActivity
                         Intent broadcast = new Intent(backup?RecordingsFragment.BROADCAST_BACKUP_REQUEST:RecordingsFragment.BROADCAST_SYNC_REQUEST);
                         LocalBroadcastManager.getInstance(MainActivity.this).sendBroadcast(broadcast);
                     }
-                },500);
+                },200);
             }
         }
     }

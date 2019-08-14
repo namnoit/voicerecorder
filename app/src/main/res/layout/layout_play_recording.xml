@@ -74,7 +74,7 @@
 
             <TextView
                 android:id="@+id/recordingDuration"
-                android:layout_width="80dp"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_alignTop="@id/recordingCurrent"
                 android:layout_alignEnd="@id/seekBar"
@@ -84,9 +84,10 @@
 
             <TextView
                 android:id="@+id/recordingCurrent"
-                android:layout_width="80dp"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_below="@id/seekBar"
+                android:layout_toStartOf="@id/recordingDuration"
                 android:layout_alignStart="@id/seekBar"
                 android:layout_marginBottom="5dp"
                 android:text="@string/start_time"
