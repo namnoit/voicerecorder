@@ -73,6 +73,7 @@ public class RecordingsFragment extends Fragment {
     public static final String KEY_FILE_NAME = "file_name";
     public static final String KEY_FILE_ID = "file_id";
     public static final String KEY_SEEK_TO_POSITION = "seek";
+    public static final String KEY_IS_LATEST_LOADED = "is_latest_loaded";
     // To show current item selected in list
     private int durationMillis = 0;
     private int curMillis = 0;
@@ -89,6 +90,7 @@ public class RecordingsFragment extends Fragment {
                         recordingsAdapter.updateSelectedPosition();
                         recordingsAdapter.notifyItemRangeChanged(1, recordingsAdapter.getItemCount());
                         recyclerView.scrollToPosition(0);
+                        mPref.put(KEY_IS_LATEST_LOADED,true);
                     }
                 }
                 else if (intent.getAction().equals(BROADCAST_FILE_DOWNLOADED)) {
@@ -211,7 +213,18 @@ public class RecordingsFragment extends Fragment {
                 new IntentFilter(RecordingsFragment.BROADCAST_BACKUP_REQUEST));
         LocalBroadcastManager.getInstance(requireContext()).registerReceiver(receiver,
                 new IntentFilter(RecordingsFragment.BROADCAST_DOWNLOAD_REQUEST));
-
+        boolean isLatestLoaded = mPref.getBoolean(KEY_IS_LATEST_LOADED);
+        if (!isLatestLoaded){
+            Recording r = db.getLast();
+            if (r != null) {
+                list.add(0, r);
+                recordingsAdapter.notifyItemInserted(0);
+                recordingsAdapter.updateSelectedPosition();
+                recordingsAdapter.notifyItemRangeChanged(1, recordingsAdapter.getItemCount());
+                recyclerView.scrollToPosition(0);
+                mPref.put(KEY_IS_LATEST_LOADED,true);
+            }
+        }
         status = mPref.getInt(SharedPreferenceManager.Key.STATUS_KEY,STATUS_STOPPED);
         if (!isServiceRunning()){
             status = STATUS_STOPPED;
@@ -250,6 +263,7 @@ public class RecordingsFragment extends Fragment {
         mPref = SharedPreferenceManager.getInstance(requireContext());
         db = new RecordingsDbHelper(getContext());
         list = db.getAll();
+        mPref.put(KEY_IS_LATEST_LOADED,true);
         seekBar = view.findViewById(R.id.seekBar);
         seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override

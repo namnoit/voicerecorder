@@ -5,6 +5,7 @@ import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
+import android.content.Context;
 import android.content.Intent;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
@@ -37,6 +38,17 @@ public class RecordingPlaybackService extends Service {
     private Intent broadcastFinishPlaying = new Intent(RecordingsFragment.BROADCAST_FINISH_PLAYING);
     private Intent broadcastStartPlaying = new Intent(RecordingsFragment.BROADCAST_START_PLAYING);
     private Intent broadcastPaused = new Intent(RecordingsFragment.BROADCAST_PAUSED);
+    private AudioManager audioManager;
+    private AudioManager.OnAudioFocusChangeListener afChangeListener =
+            new AudioManager.OnAudioFocusChangeListener() {
+                public void onAudioFocusChange(int focusChange) {
+                    if (focusChange == AudioManager.AUDIOFOCUS_LOSS ||
+                            focusChange == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT) {
+                        pause();
+                    }
+                }
+            };
+
     public static final String ACTION_PLAY = "PLAY";
     public static final String ACTION_PAUSE = "PAUSE";
     public static final String ACTION_RESUME = "RESUME";
@@ -54,6 +66,7 @@ public class RecordingPlaybackService extends Service {
     public void onCreate() {
         super.onCreate();
         mPref = SharedPreferenceManager.getInstance();
+        audioManager = (AudioManager) getApplicationContext().getSystemService(Context.AUDIO_SERVICE);
         mediaPlayer = new MediaPlayer();
         mediaPlayer.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
             @Override
@@ -84,46 +97,52 @@ public class RecordingPlaybackService extends Service {
         if (fn != null) fileName = fn;
         if (Objects.equals(intent.getAction(), ACTION_PLAY)) {
             handler.removeCallbacks(updateSeekBarTask);
-            createNotification(fileName, RecordingsFragment.STATUS_PLAYING);
-            mediaPlayer.reset();
-            mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
-            try {
-                mediaPlayer.setDataSource((Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q ?
-                        Objects.requireNonNull(getApplicationContext().getExternalFilesDir(null)).getAbsolutePath() +
-                                File.separator +
-                                MainActivity.APP_FOLDER :
-                        MainActivity.APP_DIR) +
-                        File.separator +
-                        fileName);
-                mediaPlayer.prepareAsync();
-            } catch (IOException e) {
-                e.printStackTrace();
-                Toast.makeText(getApplicationContext(),
-                        getResources().getText(R.string.error_open_file),
-                        Toast.LENGTH_SHORT).show();
-                stopSelf();
+            int result = audioManager.requestAudioFocus(afChangeListener,
+                    // Use the music stream.
+                    AudioManager.STREAM_MUSIC,
+                    // Request permanent focus.
+                    AudioManager.AUDIOFOCUS_GAIN);
+            if (result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
+                // Start playback
+                createNotification(fileName, RecordingsFragment.STATUS_PLAYING);
+                mediaPlayer.reset();
+                mediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
+                try {
+                    mediaPlayer.setDataSource((Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q ?
+                            Objects.requireNonNull(getApplicationContext().getExternalFilesDir(null)).getAbsolutePath() +
+                                    File.separator +
+                                    MainActivity.APP_FOLDER :
+                            MainActivity.APP_DIR) +
+                            File.separator +
+                            fileName);
+                    mediaPlayer.prepareAsync();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    Toast.makeText(getApplicationContext(),
+                            getResources().getText(R.string.error_open_file),
+                            Toast.LENGTH_SHORT).show();
+                    stopSelf();
+                }
             }
         }
         if (Objects.equals(intent.getAction(), ACTION_PAUSE)) {
-            createNotification(fileName, RecordingsFragment.STATUS_PAUSED);
-
-            if (mediaPlayer != null && mediaPlayer.isPlaying()) {
-                handler.removeCallbacks(updateSeekBarTask);
-                currentPosition = mediaPlayer.getCurrentPosition();
-                mediaPlayer.pause();
-                mPref.put(SharedPreferenceManager.Key.STATUS_KEY,RecordingsFragment.STATUS_PAUSED);
-                mPref.put(SharedPreferenceManager.Key.CURRENT_POSITION_KEY,currentPosition);
-                broadcastPaused.putExtra(SharedPreferenceManager.Key.CURRENT_POSITION_KEY,currentPosition);
-                LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(broadcastPaused);
-            }
+            audioManager.abandonAudioFocus(afChangeListener);
+            pause();
         }
         if (Objects.equals(intent.getAction(), ACTION_RESUME)) {
-            createNotification(fileName, RecordingsFragment.STATUS_PLAYING);
-            if (mediaPlayer != null && !mediaPlayer.isPlaying()) {
-                handler.post(updateSeekBarTask);
-                mediaPlayer.seekTo(currentPosition);
-                mediaPlayer.start();
-                mPref.put(SharedPreferenceManager.Key.STATUS_KEY,RecordingsFragment.STATUS_PLAYING);
+            int result = audioManager.requestAudioFocus(afChangeListener,
+                    // Use the music stream.
+                    AudioManager.STREAM_MUSIC,
+                    // Request permanent focus.
+                    AudioManager.AUDIOFOCUS_GAIN);
+            if (result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
+                createNotification(fileName, RecordingsFragment.STATUS_PLAYING);
+                if (mediaPlayer != null && !mediaPlayer.isPlaying()) {
+                    handler.post(updateSeekBarTask);
+                    mediaPlayer.seekTo(currentPosition);
+                    mediaPlayer.start();
+                    mPref.put(SharedPreferenceManager.Key.STATUS_KEY, RecordingsFragment.STATUS_PLAYING);
+                }
             }
         }
         if (Objects.equals(intent.getAction(), ACTION_SEEK)) {
@@ -140,6 +159,7 @@ public class RecordingPlaybackService extends Service {
     @Override
     public void onDestroy() {
         super.onDestroy();
+        audioManager.abandonAudioFocus(afChangeListener);
         handler.removeCallbacks(updateSeekBarTask);
         LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(broadcastFinishPlaying);
         mPref.put(SharedPreferenceManager.Key.STATUS_KEY,RecordingsFragment.STATUS_STOPPED);
@@ -147,6 +167,18 @@ public class RecordingPlaybackService extends Service {
         mediaPlayer = null;
     }
 
+    private void pause(){
+        createNotification(fileName, RecordingsFragment.STATUS_PAUSED);
+        if (mediaPlayer != null && mediaPlayer.isPlaying()) {
+            handler.removeCallbacks(updateSeekBarTask);
+            currentPosition = mediaPlayer.getCurrentPosition();
+            mediaPlayer.pause();
+            mPref.put(SharedPreferenceManager.Key.STATUS_KEY,RecordingsFragment.STATUS_PAUSED);
+            mPref.put(SharedPreferenceManager.Key.CURRENT_POSITION_KEY,currentPosition);
+            broadcastPaused.putExtra(SharedPreferenceManager.Key.CURRENT_POSITION_KEY,currentPosition);
+            LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(broadcastPaused);
+        }
+    }
 
     private void createNotification(String fileName, int status) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {

@@ -16,7 +16,7 @@ public class SharedPreferenceManager {
         public static final String FILE_NAME_KEY = "file_name";
         public static final String DURATION_KEY = "duration";
         public static final String PAUSE_POSITION = "PAUSE_POSITION";
-        public static final String CURRENT_POSITION_ADAPTER_KEY = "selected_position";
+        static final String CURRENT_POSITION_ADAPTER_KEY = "selected_position";
     }
 
 
@@ -50,8 +50,14 @@ public class SharedPreferenceManager {
         editor.apply();
     }
 
-    public String getString(String key, String defaultValue) {
-        return mPref.getString(key, defaultValue);
+    public void put(String key, boolean val) {
+        SharedPreferences.Editor editor = mPref.edit();
+        editor.putBoolean(key, val);
+        editor.apply();
+    }
+
+    public Boolean getBoolean(String key) {
+        return mPref.getBoolean(key, true);
     }
 
     public String getString(String key) {

@@ -9,6 +9,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.media.AudioManager;
 import android.media.MediaMetadataRetriever;
 import android.media.MediaRecorder;
 import android.os.Build;
@@ -25,6 +26,7 @@ import com.namnoit.voicerecorder.R;
 import com.namnoit.voicerecorder.SharedPreferenceManager;
 import com.namnoit.voicerecorder.data.RecordingsDbHelper;
 import com.namnoit.voicerecorder.ui.main.RecordFragment;
+import com.namnoit.voicerecorder.ui.main.RecordingsFragment;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -54,7 +56,7 @@ public class RecorderService extends Service {
     public static final String ACTION_RESUME_RECORDING = "RESUME_RECORDING";
     private SharedPreferenceManager mPref;
     private String appDir;
-    long timeInMilliseconds = 0L;
+    private long timeInMilliseconds = 0L;
     private MediaRecorder recorder;
     private String fileName = null;
     private Date dateNow;
@@ -74,7 +76,17 @@ public class RecorderService extends Service {
             new IntentFilter("android.intent.action.ACTION_SHUTDOWN");
     private IntentFilter powerOffFilter =
             new IntentFilter("android.intent.action.QUICKBOOT_POWEROFF");
-
+    private AudioManager audioManager;
+    private AudioManager.OnAudioFocusChangeListener afChangeListener =
+            new AudioManager.OnAudioFocusChangeListener() {
+                public void onAudioFocusChange(int focusChange) {
+                    if (focusChange == AudioManager.AUDIOFOCUS_LOSS ||
+                            focusChange == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT) {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) pause();
+                        else stop();
+                    }
+                }
+            };
     private Runnable sendUpdatesToUI = new Runnable() {
         public void run() {
             int timer = (int) Math.round((timeInMilliseconds + SystemClock.uptimeMillis() - initial_time)/1000.0);
@@ -84,8 +96,10 @@ public class RecorderService extends Service {
         }
     };
 
-    public RecorderService() {
+    @Override
+    public void onCreate() {
         mPref = SharedPreferenceManager.getInstance();
+        audioManager = (AudioManager) getApplicationContext().getSystemService(Context.AUDIO_SERVICE);
     }
 
     @Override
@@ -102,38 +116,39 @@ public class RecorderService extends Service {
                         MainActivity.APP_FOLDER :
                 MainActivity.APP_DIR;
         if (Objects.equals(intent.getAction(), RecordingPlaybackService.ACTION_STOP_SERVICE)) {
-            handler.removeCallbacks(sendUpdatesToUI);
-            recorder.stop();
-            recorder.reset();
-            recorder.release();
-            recorder = null;
-            executor.execute(saveFileRunnable);
+            stop();
         }
         else if (Objects.equals(intent.getAction(), ACTION_START_RECORDING)) {
-            executor.execute(setUpRunnable);
-            registerReceiver(receiver, shutdownFilter);
-            registerReceiver(receiver, powerOffFilter);
+            int result = audioManager.requestAudioFocus(afChangeListener,
+                    // Use the music stream.
+                    AudioManager.STREAM_MUSIC,
+                    // Request permanent focus.
+                    AudioManager.AUDIOFOCUS_GAIN);
+            if (result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
+                executor.execute(setUpRunnable);
+                registerReceiver(receiver, shutdownFilter);
+                registerReceiver(receiver, powerOffFilter);
+            }
         }
         else if (Objects.equals(intent.getAction(), ACTION_PAUSE_RECORDING)){
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                handler.removeCallbacks(sendUpdatesToUI);
-                recorder.pause();
-                timeInMilliseconds += SystemClock.uptimeMillis() - initial_time;
-                mPref.put(SharedPreferenceManager.Key.RECORD_STATUS_KEY,RecordFragment.STATUS_PAUSED);
-                mPref.put(SharedPreferenceManager.Key.PAUSE_POSITION,Math.round(timeInMilliseconds/1000f));
-
-                createNotification(RecordFragment.STATUS_PAUSED);
-                LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(broadcastPause);
-            }
+            audioManager.abandonAudioFocus(afChangeListener);
+            pause();
         }
         else if (Objects.equals(intent.getAction(), ACTION_RESUME_RECORDING)){
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                initial_time = SystemClock.uptimeMillis();
-                recorder.resume();
-                handler.postDelayed(sendUpdatesToUI,0);
-                mPref.put(SharedPreferenceManager.Key.RECORD_STATUS_KEY,RecordFragment.STATUS_RECORDING);
-                createNotification(RecordFragment.STATUS_RECORDING);
-                LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(broadcastResume);
+                int result = audioManager.requestAudioFocus(afChangeListener,
+                        // Use the music stream.
+                        AudioManager.STREAM_MUSIC,
+                        // Request permanent focus.
+                        AudioManager.AUDIOFOCUS_GAIN);
+                if (result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
+                    initial_time = SystemClock.uptimeMillis();
+                    recorder.resume();
+                    handler.postDelayed(sendUpdatesToUI, 0);
+                    mPref.put(SharedPreferenceManager.Key.RECORD_STATUS_KEY, RecordFragment.STATUS_RECORDING);
+                    createNotification(RecordFragment.STATUS_RECORDING);
+                    LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(broadcastResume);
+                }
             }
         }
         return super.onStartCommand(intent, flags, startId);
@@ -144,6 +159,7 @@ public class RecorderService extends Service {
         executor.shutdown();
         unregisterReceiver(receiver);
         if (recorder != null) {
+            audioManager.abandonAudioFocus(afChangeListener);
             handler.removeCallbacks(sendUpdatesToUI);
             recorder.stop();
             recorder.reset();
@@ -195,6 +211,29 @@ public class RecorderService extends Service {
             }
         }
         super.onDestroy();
+    }
+
+    private void pause(){
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            handler.removeCallbacks(sendUpdatesToUI);
+            recorder.pause();
+            timeInMilliseconds += SystemClock.uptimeMillis() - initial_time;
+            mPref.put(SharedPreferenceManager.Key.RECORD_STATUS_KEY,RecordFragment.STATUS_PAUSED);
+            mPref.put(SharedPreferenceManager.Key.PAUSE_POSITION,Math.round(timeInMilliseconds/1000f));
+
+            createNotification(RecordFragment.STATUS_PAUSED);
+            LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(broadcastPause);
+        }
+    }
+
+    private void stop(){
+        audioManager.abandonAudioFocus(afChangeListener);
+        handler.removeCallbacks(sendUpdatesToUI);
+        recorder.stop();
+        recorder.reset();
+        recorder.release();
+        recorder = null;
+        executor.execute(saveFileRunnable);
     }
 
     private Runnable setUpRunnable = new Runnable() {
@@ -294,6 +333,7 @@ public class RecorderService extends Service {
                 LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(broadcast);
                 stopSelf();
                 mPref.put(SharedPreferenceManager.Key.RECORD_STATUS_KEY,RecordFragment.STATUS_STOPPED);
+                mPref.put(RecordingsFragment.KEY_IS_LATEST_LOADED,false);
             } catch (NoSuchAlgorithmException e) {
                 e.printStackTrace();
             } catch (FileNotFoundException e) {
