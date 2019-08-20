@@ -30,14 +30,13 @@
 
             <TextView
                 android:id="@+id/item_recording_name"
-                android:layout_width="wrap_content"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_alignTop="@id/image_record"
-                android:layout_marginEnd="10dp"
                 android:layout_toStartOf="@id/buttonMore"
                 android:layout_toEndOf="@id/image_record"
                 android:lines="1"
-                android:textSize="18sp"
+                android:textSize="17sp"
                 android:textStyle="bold" />
 
             <TextView
@@ -54,25 +53,26 @@
                 android:id="@+id/image_record"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_margin="10dp"
-                app:srcCompat="@drawable/ic_mic"
-                android:contentDescription="@string/icon_description" />
+                android:layout_marginStart="10dp"
+                android:layout_marginTop="10dp"
+                android:layout_marginEnd="5dp"
+                android:layout_marginBottom="10dp"
+                android:contentDescription="@string/icon_description"
+                app:srcCompat="@drawable/ic_mic" />
 
             <ImageButton
                 android:id="@+id/buttonMore"
                 android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:paddingTop="18dp"
-                android:paddingBottom="18dp"
-                android:paddingStart="14dp"
-                android:paddingEnd="14dp"
-                android:clickable="true"
+                android:layout_height="68dp"
                 android:layout_alignParentEnd="true"
                 android:layout_centerVertical="true"
-                app:srcCompat="@drawable/ic_more"
-                android:focusable="true"
                 android:background="?android:attr/selectableItemBackground"
-                android:contentDescription="@string/icon_description"/>
+                android:clickable="true"
+                android:contentDescription="@string/icon_description"
+                android:focusable="true"
+                android:paddingStart="14dp"
+                android:paddingEnd="14dp"
+                app:srcCompat="@drawable/ic_more" />
 
             <ImageView
                 android:id="@+id/line"

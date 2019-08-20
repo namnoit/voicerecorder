@@ -43,9 +43,8 @@ public class RecordingPlaybackService extends Service {
             new AudioManager.OnAudioFocusChangeListener() {
                 public void onAudioFocusChange(int focusChange) {
                     if (focusChange == AudioManager.AUDIOFOCUS_LOSS ||
-                            focusChange == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT) {
-                        pause();
-                    }
+                            focusChange == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT) pause();
+                    else if (focusChange == AudioManager.AUDIOFOCUS_GAIN) resume();
                 }
             };
 
@@ -136,13 +135,7 @@ public class RecordingPlaybackService extends Service {
                     // Request permanent focus.
                     AudioManager.AUDIOFOCUS_GAIN);
             if (result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
-                createNotification(fileName, RecordingsFragment.STATUS_PLAYING);
-                if (mediaPlayer != null && !mediaPlayer.isPlaying()) {
-                    handler.post(updateSeekBarTask);
-                    mediaPlayer.seekTo(currentPosition);
-                    mediaPlayer.start();
-                    mPref.put(SharedPreferenceManager.Key.STATUS_KEY, RecordingsFragment.STATUS_PLAYING);
-                }
+                resume();
             }
         }
         if (Objects.equals(intent.getAction(), ACTION_SEEK)) {
@@ -177,6 +170,16 @@ public class RecordingPlaybackService extends Service {
             mPref.put(SharedPreferenceManager.Key.CURRENT_POSITION_KEY,currentPosition);
             broadcastPaused.putExtra(SharedPreferenceManager.Key.CURRENT_POSITION_KEY,currentPosition);
             LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(broadcastPaused);
+        }
+    }
+
+    private void resume() {
+        createNotification(fileName, RecordingsFragment.STATUS_PLAYING);
+        if (mediaPlayer != null && !mediaPlayer.isPlaying()) {
+            handler.post(updateSeekBarTask);
+            mediaPlayer.seekTo(currentPosition);
+            mediaPlayer.start();
+            mPref.put(SharedPreferenceManager.Key.STATUS_KEY, RecordingsFragment.STATUS_PLAYING);
         }
     }
 

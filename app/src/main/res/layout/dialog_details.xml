@@ -14,6 +14,7 @@
         android:layout_marginTop="15dp"
         android:layout_marginEnd="15dp"
         android:layout_marginBottom="15dp"
+        android:layout_toStartOf="@id/image_drive"
         android:text="@string/details"
         android:textSize="20sp" />
 
@@ -69,11 +70,12 @@
 
     <TextView
         android:id="@+id/text_details_title"
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:maxLines="1"
+        android:layout_marginEnd="15dp"
         android:layout_alignBottom="@id/image_details_title"
         android:layout_toEndOf="@id/image_details_title"
+        android:maxLines="1"
         android:textSize="14sp" />
 
     <TextView
@@ -96,19 +98,21 @@
 
     <TextView
         android:id="@+id/text_details_size"
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_marginEnd="15dp"
         android:layout_alignBottom="@id/image_details_capacity"
         android:layout_toEndOf="@id/image_details_capacity"
         android:textSize="14sp" />
 
     <TextView
         android:id="@+id/text_details_duration"
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:maxLines="1"
+        android:layout_marginEnd="15dp"
         android:layout_alignBottom="@id/image_details_duration"
         android:layout_toEndOf="@id/image_details_duration"
+        android:maxLines="1"
         android:textSize="14sp" />
 
     <TextView
@@ -122,11 +126,12 @@
 
     <TextView
         android:id="@+id/text_details_time"
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:maxLines="1"
+        android:layout_marginEnd="15dp"
         android:layout_alignBottom="@id/image_details_time"
         android:layout_toEndOf="@id/image_details_time"
+        android:maxLines="1"
         android:textSize="14sp" />
 
     <TextView
@@ -140,11 +145,12 @@
 
     <TextView
         android:id="@+id/text_details_format"
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:maxLines="1"
+        android:layout_marginEnd="15dp"
         android:layout_alignBottom="@id/image_details_format"
         android:layout_toEndOf="@id/image_details_format"
+        android:maxLines="1"
         android:textSize="14sp" />
 
     <TextView

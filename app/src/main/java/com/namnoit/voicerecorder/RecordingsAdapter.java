@@ -130,8 +130,6 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
                 }
             }
         });
-
-
         holder.itemView.setOnLongClickListener(new View.OnLongClickListener() {
             @Override
             public boolean onLongClick(View view) {
@@ -248,12 +246,12 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
                         String strSize;
                         if (fileSize < 1024) {
                             strSize = fileSize + " bytes";
-                        } else if ((fileSize = fileSize / 1024) < 1024) {
-                            strSize = fileSize + " KB";
-                        } else if ((fileSize = fileSize / 1024) < 1024) {
-                            strSize = fileSize + " MB";
+                        } else if (fileSize < 1024*1024) {
+                            strSize = long2Decimal(fileSize) + " KB";
+                        } else if (fileSize<1024*1024*1024) {
+                            strSize = long2Decimal(fileSize/1024) + " MB";
                         } else {
-                            strSize = fileSize + " GB";
+                            strSize = long2Decimal(fileSize/1024/1024) + " GB";
                         }
                         textSize.setText(strSize);
                         // Time
@@ -330,6 +328,14 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
                 dialog.show();
             }
         });
+    }
+
+    private String long2Decimal(long size){
+        String strSize = Long.toString(size/1024);
+        int fractions = Math.round((size % 1024)*10f/1024);
+        if (fractions != 0)
+            strSize += "." + fractions;
+        return strSize;
     }
 
     @Override

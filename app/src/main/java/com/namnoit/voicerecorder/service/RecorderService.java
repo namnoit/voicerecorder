@@ -85,6 +85,15 @@ public class RecorderService extends Service {
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) pause();
                         else stop();
                     }
+                    else if (focusChange == AudioManager.AUDIOFOCUS_GAIN &&
+                            Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                        int result = audioManager.requestAudioFocus(afChangeListener,
+                                // Use the music stream.
+                                AudioManager.STREAM_MUSIC,
+                                // Request permanent focus.
+                                AudioManager.AUDIOFOCUS_GAIN);
+                        if (result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED) resume();
+                    }
                 }
             };
     private Runnable sendUpdatesToUI = new Runnable() {
@@ -110,15 +119,14 @@ public class RecorderService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        appDir = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q?
+        appDir = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q ?
                 Objects.requireNonNull(getApplicationContext().getExternalFilesDir(null)).getAbsolutePath() +
                         File.separator +
                         MainActivity.APP_FOLDER :
                 MainActivity.APP_DIR;
         if (Objects.equals(intent.getAction(), RecordingPlaybackService.ACTION_STOP_SERVICE)) {
             stop();
-        }
-        else if (Objects.equals(intent.getAction(), ACTION_START_RECORDING)) {
+        } else if (Objects.equals(intent.getAction(), ACTION_START_RECORDING)) {
             int result = audioManager.requestAudioFocus(afChangeListener,
                     // Use the music stream.
                     AudioManager.STREAM_MUSIC,
@@ -129,28 +137,18 @@ public class RecorderService extends Service {
                 registerReceiver(receiver, shutdownFilter);
                 registerReceiver(receiver, powerOffFilter);
             }
-        }
-        else if (Objects.equals(intent.getAction(), ACTION_PAUSE_RECORDING)){
+        } else if (Objects.equals(intent.getAction(), ACTION_PAUSE_RECORDING)) {
             audioManager.abandonAudioFocus(afChangeListener);
             pause();
+        } else if (Objects.equals(intent.getAction(), ACTION_RESUME_RECORDING)) {
+            int result = audioManager.requestAudioFocus(afChangeListener,
+                    // Use the music stream.
+                    AudioManager.STREAM_MUSIC,
+                    // Request permanent focus.
+                    AudioManager.AUDIOFOCUS_GAIN);
+            if (result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED) resume();
         }
-        else if (Objects.equals(intent.getAction(), ACTION_RESUME_RECORDING)){
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                int result = audioManager.requestAudioFocus(afChangeListener,
-                        // Use the music stream.
-                        AudioManager.STREAM_MUSIC,
-                        // Request permanent focus.
-                        AudioManager.AUDIOFOCUS_GAIN);
-                if (result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
-                    initial_time = SystemClock.uptimeMillis();
-                    recorder.resume();
-                    handler.postDelayed(sendUpdatesToUI, 0);
-                    mPref.put(SharedPreferenceManager.Key.RECORD_STATUS_KEY, RecordFragment.STATUS_RECORDING);
-                    createNotification(RecordFragment.STATUS_RECORDING);
-                    LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(broadcastResume);
-                }
-            }
-        }
+
         return super.onStartCommand(intent, flags, startId);
     }
 
@@ -234,6 +232,17 @@ public class RecorderService extends Service {
         recorder.release();
         recorder = null;
         executor.execute(saveFileRunnable);
+    }
+
+    private void resume() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            initial_time = SystemClock.uptimeMillis();
+            recorder.resume();
+            handler.postDelayed(sendUpdatesToUI, 0);
+            mPref.put(SharedPreferenceManager.Key.RECORD_STATUS_KEY, RecordFragment.STATUS_RECORDING);
+            createNotification(RecordFragment.STATUS_RECORDING);
+            LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(broadcastResume);
+        }
     }
 
     private Runnable setUpRunnable = new Runnable() {
@@ -391,6 +400,7 @@ public class RecorderService extends Service {
                         pauseIntent,
                         PendingIntent.FLAG_CANCEL_CURRENT);
                 builder.addAction(R.drawable.ic_pause_white,getResources().getString(R.string.pause),pausePendingIntent);
+                builder.setContentTitle(getText(R.string.notification_title_recording));
             }
             else if(status == RecordFragment.STATUS_PAUSED){
                 Intent resumeIntent = new Intent(this, RecorderService.class);
@@ -401,6 +411,7 @@ public class RecorderService extends Service {
                         resumeIntent,
                         PendingIntent.FLAG_CANCEL_CURRENT);
                 builder.addAction(R.drawable.ic_record,getResources().getString(R.string.resume),resumePendingIntent);
+                builder.setContentTitle(getResources().getString(R.string.notification_text_paused));
             }
         }
         builder.addAction(R.drawable.ic_stop, getResources().getString(R.string.stop), stopPendingIntent);
