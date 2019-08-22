@@ -246,12 +246,12 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
                         String strSize;
                         if (fileSize < 1024) {
                             strSize = fileSize + " bytes";
-                        } else if (fileSize < 1024*1024) {
+                        } else if (fileSize < 1024 * 1024) {
                             strSize = long2Decimal(fileSize) + " KB";
-                        } else if (fileSize<1024*1024*1024) {
-                            strSize = long2Decimal(fileSize/1024) + " MB";
+                        } else if (fileSize < 1024 * 1024 * 1024) {
+                            strSize = long2Decimal(fileSize / 1024) + " MB";
                         } else {
-                            strSize = long2Decimal(fileSize/1024/1024) + " GB";
+                            strSize = long2Decimal(fileSize / 1024 / 1024) + " GB";
                         }
                         textSize.setText(strSize);
                         // Time
@@ -265,19 +265,9 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
                             textFormat.setText(context.getResources().getString(R.string.quality_small));
                         // Location
                         ImageView drive = detailsDialogLayout.findViewById(R.id.image_drive);
-                        ImageView local = detailsDialogLayout.findViewById(R.id.image_local);
-                        if (recordingsList.get(position).getLocation() == Recording.LOCATION_ON_PHONE) {
-                            local.setVisibility(View.VISIBLE);
-                            drive.setVisibility(View.INVISIBLE);
-                        }
-                        else if (recordingsList.get(position).getLocation() == Recording.LOCATION_ON_DRIVE) {
-                            local.setVisibility(View.INVISIBLE);
-                            drive.setVisibility(View.VISIBLE);
-                        }
-                        else{
-                            local.setVisibility(View.VISIBLE);
-                            drive.setVisibility(View.VISIBLE);
-                        }
+                        drive.setVisibility(recordingsList.get(position).getLocation() == Recording.LOCATION_ON_PHONE ?
+                                View.INVISIBLE :
+                                View.VISIBLE);
                         detailBuilder.setView(detailsDialogLayout)
                                 .setPositiveButton(R.string.ok, new DialogInterface.OnClickListener() {
                                     @Override

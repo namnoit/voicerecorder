@@ -1,109 +1,103 @@
 <?xml version="1.0" encoding="utf-8"?>
-<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content">
+    android:layout_height="wrap_content"
+    android:backgroundTint="@color/colorPrimary"
+    android:clickable="true"
+    android:focusable="true"
+    app:cardCornerRadius="10dp">
 
-    <androidx.cardview.widget.CardView
+    <RelativeLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:backgroundTint="@color/colorPrimary"
-        android:clickable="true"
-        app:cardCornerRadius="10dp"
-        android:layout_margin="4dp"
-        android:focusable="true">
+        android:layout_height="match_parent">
 
-        <RelativeLayout
+        <FrameLayout
+            android:id="@+id/playRecordingView"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentTop="true"
+            android:layout_toStartOf="@id/closeRecordingButton"
+            android:background="?android:attr/selectableItemBackground"
+            android:clickable="true"
+            android:focusable="true">
+
+            <ImageButton
+                android:id="@+id/playRecordingButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_margin="5dp"
+                android:background="@null"
+                android:clickable="false"
+                android:contentDescription="@string/play_recording_button_desc"
+                app:srcCompat="@drawable/ic_pause_white" />
+        </FrameLayout>
+
+        <FrameLayout
+            android:id="@+id/closeRecordingButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentTop="true"
+            android:layout_alignParentEnd="true"
+            android:background="?android:attr/selectableItemBackground"
+            android:clickable="true"
+            android:focusable="true">
+
+            <ImageButton
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_margin="5dp"
+                android:background="@null"
+                android:clickable="false"
+                android:contentDescription="@string/close_recording_button_desc"
+                app:srcCompat="@drawable/ic_close" />
+        </FrameLayout>
+
+        <SeekBar
+            android:id="@+id/seekBar"
+            style="@style/seekBar"
             android:layout_width="match_parent"
-            android:layout_height="match_parent">
+            android:layout_height="wrap_content"
+            android:layout_below="@id/recordingTitle"
+            android:layout_marginStart="10dp"
+            android:layout_marginTop="10dp"
+            android:layout_marginEnd="10dp"
+            android:layout_marginBottom="10dp" />
 
-            <FrameLayout
-                android:id="@+id/playRecordingView"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_alignParentTop="true"
-                android:layout_toStartOf="@id/closeRecordingButton"
-                android:background="?android:attr/selectableItemBackground"
-                android:clickable="true"
-                android:focusable="true">
+        <TextView
+            android:id="@+id/recordingDuration"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignTop="@id/recordingCurrent"
+            android:layout_alignEnd="@id/seekBar"
+            android:text="@string/start_time"
+            android:textAlignment="textEnd"
+            android:textColor="@color/colorFab" />
 
-                <ImageButton
-                    android:id="@+id/playRecordingButton"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:background="@null"
-                    android:layout_margin="5dp"
-                    android:contentDescription="@string/play_recording_button_desc"
-                    app:srcCompat="@drawable/ic_pause_white"
-                    android:clickable="false"/>
-            </FrameLayout>
+        <TextView
+            android:id="@+id/recordingCurrent"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/seekBar"
+            android:layout_alignStart="@id/seekBar"
+            android:layout_marginBottom="5dp"
+            android:layout_toStartOf="@id/recordingDuration"
+            android:text="@string/start_time"
+            android:textAlignment="textStart"
+            android:textColor="@color/colorFab" />
 
-            <FrameLayout
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:id="@+id/closeRecordingButton"
-                android:layout_alignParentEnd="true"
-                android:layout_alignParentTop="true"
-                android:background="?android:attr/selectableItemBackground"
-                android:clickable="true"
-                android:focusable="true">
+        <TextView
+            android:id="@+id/recordingTitle"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_alignParentStart="true"
+            android:layout_marginStart="10dp"
+            android:layout_marginTop="12dp"
+            android:layout_marginBottom="10dp"
+            android:layout_toStartOf="@id/playRecordingView"
+            android:maxLines="1"
+            android:textColor="@color/colorFab"
+            android:textSize="17sp" />
 
-                <ImageButton
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:background="@null"
-                    android:layout_margin="5dp"
-                    android:contentDescription="@string/close_recording_button_desc"
-                    app:srcCompat="@drawable/ic_close"
-                    android:clickable="false"/>
-            </FrameLayout>
-
-            <TextView
-                android:id="@+id/recordingTitle"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_alignParentStart="true"
-                android:layout_marginStart="10dp"
-                android:layout_marginTop="12dp"
-                android:layout_marginBottom="10dp"
-                android:layout_toStartOf="@id/playRecordingView"
-                android:maxLines="1"
-                android:textColor="@color/colorFab"
-                android:textSize="17sp" />
-
-            <TextView
-                android:id="@+id/recordingDuration"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_alignTop="@id/recordingCurrent"
-                android:layout_alignEnd="@id/seekBar"
-                android:text="@string/start_time"
-                android:textAlignment="textEnd"
-                android:textColor="@color/colorFab" />
-
-            <TextView
-                android:id="@+id/recordingCurrent"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_below="@id/seekBar"
-                android:layout_toStartOf="@id/recordingDuration"
-                android:layout_alignStart="@id/seekBar"
-                android:layout_marginBottom="5dp"
-                android:text="@string/start_time"
-                android:textAlignment="textStart"
-                android:textColor="@color/colorFab" />
-
-            <SeekBar
-                android:id="@+id/seekBar"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                style="@style/seekBar"
-                android:layout_below="@id/recordingTitle"
-                android:layout_marginStart="10dp"
-                android:layout_marginTop="10dp"
-                android:layout_marginEnd="10dp"
-                android:layout_marginBottom="10dp" />
-
-        </RelativeLayout>
-    </androidx.cardview.widget.CardView>
-</RelativeLayout>
+    </RelativeLayout>
+</androidx.cardview.widget.CardView>

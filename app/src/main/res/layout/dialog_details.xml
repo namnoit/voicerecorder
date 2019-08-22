@@ -72,8 +72,8 @@
         android:id="@+id/text_details_title"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_below="@id/textView2"
         android:layout_marginEnd="15dp"
-        android:layout_alignBottom="@id/image_details_title"
         android:layout_toEndOf="@id/image_details_title"
         android:maxLines="1"
         android:textSize="14sp" />
@@ -100,8 +100,8 @@
         android:id="@+id/text_details_size"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_below="@id/text_details_file_name2"
         android:layout_marginEnd="15dp"
-        android:layout_alignBottom="@id/image_details_capacity"
         android:layout_toEndOf="@id/image_details_capacity"
         android:textSize="14sp" />
 
@@ -109,8 +109,8 @@
         android:id="@+id/text_details_duration"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_below="@id/text_details_file_name3"
         android:layout_marginEnd="15dp"
-        android:layout_alignBottom="@id/image_details_duration"
         android:layout_toEndOf="@id/image_details_duration"
         android:maxLines="1"
         android:textSize="14sp" />
@@ -128,8 +128,8 @@
         android:id="@+id/text_details_time"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_below="@id/text_details_file_name4"
         android:layout_marginEnd="15dp"
-        android:layout_alignBottom="@id/image_details_time"
         android:layout_toEndOf="@id/image_details_time"
         android:maxLines="1"
         android:textSize="14sp" />
@@ -147,8 +147,8 @@
         android:id="@+id/text_details_format"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_below="@id/text_details_file_name5"
         android:layout_marginEnd="15dp"
-        android:layout_alignBottom="@id/image_details_format"
         android:layout_toEndOf="@id/image_details_format"
         android:maxLines="1"
         android:textSize="14sp" />

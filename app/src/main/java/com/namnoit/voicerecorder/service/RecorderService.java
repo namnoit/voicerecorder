@@ -198,13 +198,7 @@ public class RecorderService extends Service {
                 dbHelper.insert(fileName, length, Integer.parseInt(duration), formattedDate, hashValue);
                 Intent broadcast = new Intent(BROADCAST_FINISH_RECORDING);
                 LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(broadcast);
-            } catch (NoSuchAlgorithmException e) {
-                e.printStackTrace();
-            } catch (FileNotFoundException e) {
-                e.printStackTrace();
-            } catch (IOException e) {
-                e.printStackTrace();
-            } catch (ParseException e) {
+            } catch (NoSuchAlgorithmException | IOException | ParseException e) {
                 e.printStackTrace();
             }
         }
@@ -267,7 +261,7 @@ public class RecorderService extends Service {
                 case MainActivity.QUALITY_SMALL:
                     recorder.setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP);
                     recorder.setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB);
-                    recorder.setAudioSamplingRate(16000);
+                    recorder.setAudioSamplingRate(48000);
                     recorder.setAudioEncodingBitRate(128000);
                     fileName += "." + THREE_GPP;
                     break;
@@ -295,9 +289,7 @@ public class RecorderService extends Service {
                 initial_time = SystemClock.uptimeMillis();
                 handler.removeCallbacks(sendUpdatesToUI);
                 handler.postDelayed(sendUpdatesToUI, 0);
-            } catch (IllegalStateException e) {
-                e.printStackTrace();
-            } catch (IOException e) {
+            } catch (IllegalStateException | IOException e) {
                 e.printStackTrace();
             }
         }
@@ -343,13 +335,7 @@ public class RecorderService extends Service {
                 stopSelf();
                 mPref.put(SharedPreferenceManager.Key.RECORD_STATUS_KEY,RecordFragment.STATUS_STOPPED);
                 mPref.put(RecordingsFragment.KEY_IS_LATEST_LOADED,false);
-            } catch (NoSuchAlgorithmException e) {
-                e.printStackTrace();
-            } catch (FileNotFoundException e) {
-                e.printStackTrace();
-            } catch (IOException e) {
-                e.printStackTrace();
-            } catch (ParseException e) {
+            } catch (NoSuchAlgorithmException | IOException | ParseException e) {
                 e.printStackTrace();
             }
         }
