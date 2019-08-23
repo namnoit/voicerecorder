@@ -75,9 +75,9 @@ public class MainActivity extends AppCompatActivity
     private static final String DIR = Environment.getExternalStorageDirectory().getAbsolutePath();
     public static final String APP_FOLDER = "Ez Voice Recorder";
     public static final String APP_DIR = DIR + File.separator + APP_FOLDER;
-    private int qualityChosen;
-    private TextView navEmail, navProfileName;
-    private ImageView profilePicture;
+    private int mQualityChosen;
+    private TextView mNavigationEmailText, mNavigationProfileNameText;
+    private ImageView mProfileImage;
     private GoogleSignInClient mGoogleSignInClient;
 
 
@@ -159,7 +159,7 @@ public class MainActivity extends AppCompatActivity
                 .build();
         mGoogleSignInClient = GoogleSignIn.getClient(this, gso);
         mPref = SharedPreferenceManager.getInstance(getApplicationContext());
-        qualityChosen = mPref.getInt(SharedPreferenceManager.Key.QUALITY_KEY,QUALITY_GOOD);
+        mQualityChosen = mPref.getInt(SharedPreferenceManager.Key.QUALITY_KEY,QUALITY_GOOD);
 
         PagerAdapter sectionsPagerAdapter = new PagerAdapter(getSupportFragmentManager());
         sectionsPagerAdapter.addFragment(new RecordFragment(),getResources().getString(R.string.tab_record));
@@ -172,9 +172,9 @@ public class MainActivity extends AppCompatActivity
         DrawerLayout drawer = findViewById(R.id.drawer_layout);
         NavigationView navigationView = findViewById(R.id.nav_view);
         View headerView = navigationView.getHeaderView(0);
-        navEmail = headerView.findViewById(R.id.nav_email);
-        navProfileName = headerView.findViewById(R.id.nav_profile_name);
-        profilePicture = headerView.findViewById(R.id.avatar);
+        mNavigationEmailText = headerView.findViewById(R.id.nav_email);
+        mNavigationProfileNameText = headerView.findViewById(R.id.nav_profile_name);
+        mProfileImage = headerView.findViewById(R.id.avatar);
         GoogleSignInAccount account = GoogleSignIn.getLastSignedInAccount(this);
         updateUI(account);
 
@@ -187,30 +187,39 @@ public class MainActivity extends AppCompatActivity
     }
 
     private void checkPermissions() {
-        List<String> listPermissionNeeded = new ArrayList<>();
-        for (String permission : appPermissions) {
-            if (ContextCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED)
-                listPermissionNeeded.add(permission);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            List<String> listPermissionNeeded = new ArrayList<>();
+            for (String permission : appPermissions) {
+                if (ContextCompat.checkSelfPermission(this, permission) != PackageManager.PERMISSION_GRANTED)
+                    listPermissionNeeded.add(permission);
+            }
+            if (!listPermissionNeeded.isEmpty()) {
+                ActivityCompat.requestPermissions(this,
+                        listPermissionNeeded.toArray(new String[0]),
+                        PERMISSION_REQUEST_CODE);
+            }
         }
-        if (!listPermissionNeeded.isEmpty()) {
-            ActivityCompat.requestPermissions(this,
-                    listPermissionNeeded.toArray(new String[0]),
-                    PERMISSION_REQUEST_CODE);
+        else {
+            File folder = new File(APP_DIR);
+            if (!folder.exists() && !folder.mkdir())
+                Toast.makeText(getApplicationContext(),
+                        getResources().getString(R.string.create_directory_failed),
+                        Toast.LENGTH_SHORT).show();
         }
     }
 
 
     private void updateUI(GoogleSignInAccount account){
         if (account != null){
-            navProfileName.setText(account.getDisplayName());
-            navEmail.setText(account.getEmail());
-            Glide.with(this).load(account.getPhotoUrl()).apply(RequestOptions.circleCropTransform()).into(profilePicture);
+            mNavigationProfileNameText.setText(account.getDisplayName());
+            mNavigationEmailText.setText(account.getEmail());
+            Glide.with(this).load(account.getPhotoUrl()).apply(RequestOptions.circleCropTransform()).into(mProfileImage);
             sync(false);
         }
         else{
-            navProfileName.setText(getResources().getString(R.string.app_name));
-            navEmail.setText(getResources().getString(R.string.nav_header_subtitle));
-            profilePicture.setImageResource(R.mipmap.ic_launcher_round);
+            mNavigationProfileNameText.setText(getResources().getString(R.string.app_name));
+            mNavigationEmailText.setText(getResources().getString(R.string.nav_header_subtitle));
+            mProfileImage.setImageResource(R.mipmap.ic_launcher_round);
         }
     }
 
@@ -252,21 +261,21 @@ public class MainActivity extends AppCompatActivity
             final CharSequence[] items = {getResources().getString(R.string.quality_good),getResources().getString(R.string.quality_small)};
             AlertDialog qualityDialog = new AlertDialog.Builder(MainActivity.this)
                     .setTitle(getResources().getString(R.string.text_quality_title))
-                    .setSingleChoiceItems(items, qualityChosen, new DialogInterface.OnClickListener() {
+                    .setSingleChoiceItems(items, mQualityChosen, new DialogInterface.OnClickListener() {
                         public void onClick(DialogInterface dialog, int item) {
-                            qualityChosen = item;
+                            mQualityChosen = item;
                         }
                     })
                     .setPositiveButton(R.string.ok, new DialogInterface.OnClickListener() {
                         @Override
                         public void onClick(DialogInterface dialog, int which) {
-                            mPref.put(SharedPreferenceManager.Key.QUALITY_KEY,qualityChosen);
+                            mPref.put(SharedPreferenceManager.Key.QUALITY_KEY, mQualityChosen);
                         }
                     })
                     .setOnDismissListener(new DialogInterface.OnDismissListener() {
                         @Override
                         public void onDismiss(DialogInterface dialog) {
-                            qualityChosen = mPref.getInt(SharedPreferenceManager.Key.QUALITY_KEY,QUALITY_GOOD);
+                            mQualityChosen = mPref.getInt(SharedPreferenceManager.Key.QUALITY_KEY,QUALITY_GOOD);
                         }
                     })
                     .create();

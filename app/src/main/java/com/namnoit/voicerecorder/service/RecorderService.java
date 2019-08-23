@@ -30,7 +30,6 @@ import com.namnoit.voicerecorder.ui.main.RecordingsFragment;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigInteger;
@@ -57,16 +56,16 @@ public class RecorderService extends Service {
     private SharedPreferenceManager mPref;
     private String appDir;
     private long timeInMilliseconds = 0L;
-    private MediaRecorder recorder;
+    private MediaRecorder mRecorder;
     private String fileName = null;
     private Date dateNow;
-    private Handler handler = new Handler();
-    private ExecutorService executor = Executors.newSingleThreadExecutor();
+    private Handler mHandler = new Handler();
+    private ExecutorService mExecutor = Executors.newSingleThreadExecutor();
     private long initial_time;
-    private Intent broadcastUpdateTime = new Intent(BROADCAST_UPDATE_TIME);
-    private Intent broadcastPause = new Intent(ACTION_PAUSE_RECORDING);
-    private Intent broadcastResume = new Intent(ACTION_RESUME_RECORDING);
-    private BroadcastReceiver receiver = new BroadcastReceiver() {
+    private Intent mUpdateTimeBroadcast = new Intent(BROADCAST_UPDATE_TIME);
+    private Intent mPauseBroadcast = new Intent(ACTION_PAUSE_RECORDING);
+    private Intent mResumeBroadcast = new Intent(ACTION_RESUME_RECORDING);
+    private BroadcastReceiver mReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
             stopSelf();
@@ -76,8 +75,8 @@ public class RecorderService extends Service {
             new IntentFilter("android.intent.action.ACTION_SHUTDOWN");
     private IntentFilter powerOffFilter =
             new IntentFilter("android.intent.action.QUICKBOOT_POWEROFF");
-    private AudioManager audioManager;
-    private AudioManager.OnAudioFocusChangeListener afChangeListener =
+    private AudioManager mAudioManager;
+    private AudioManager.OnAudioFocusChangeListener mAFChangeListener =
             new AudioManager.OnAudioFocusChangeListener() {
                 public void onAudioFocusChange(int focusChange) {
                     if (focusChange == AudioManager.AUDIOFOCUS_LOSS ||
@@ -87,7 +86,7 @@ public class RecorderService extends Service {
                     }
                     else if (focusChange == AudioManager.AUDIOFOCUS_GAIN &&
                             Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                        int result = audioManager.requestAudioFocus(afChangeListener,
+                        int result = mAudioManager.requestAudioFocus(mAFChangeListener,
                                 // Use the music stream.
                                 AudioManager.STREAM_MUSIC,
                                 // Request permanent focus.
@@ -99,16 +98,16 @@ public class RecorderService extends Service {
     private Runnable sendUpdatesToUI = new Runnable() {
         public void run() {
             int timer = (int) Math.round((timeInMilliseconds + SystemClock.uptimeMillis() - initial_time)/1000.0);
-            broadcastUpdateTime.putExtra("time", timer);
-            LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(broadcastUpdateTime);
-            handler.postDelayed(this, 1000);
+            mUpdateTimeBroadcast.putExtra("time", timer);
+            LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(mUpdateTimeBroadcast);
+            mHandler.postDelayed(this, 1000);
         }
     };
 
     @Override
     public void onCreate() {
         mPref = SharedPreferenceManager.getInstance();
-        audioManager = (AudioManager) getApplicationContext().getSystemService(Context.AUDIO_SERVICE);
+        mAudioManager = (AudioManager) getApplicationContext().getSystemService(Context.AUDIO_SERVICE);
     }
 
     @Override
@@ -127,21 +126,21 @@ public class RecorderService extends Service {
         if (Objects.equals(intent.getAction(), RecordingPlaybackService.ACTION_STOP_SERVICE)) {
             stop();
         } else if (Objects.equals(intent.getAction(), ACTION_START_RECORDING)) {
-            int result = audioManager.requestAudioFocus(afChangeListener,
+            int result = mAudioManager.requestAudioFocus(mAFChangeListener,
                     // Use the music stream.
                     AudioManager.STREAM_MUSIC,
                     // Request permanent focus.
                     AudioManager.AUDIOFOCUS_GAIN);
             if (result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
-                executor.execute(setUpRunnable);
-                registerReceiver(receiver, shutdownFilter);
-                registerReceiver(receiver, powerOffFilter);
+                mExecutor.execute(setUpRunnable);
+                registerReceiver(mReceiver, shutdownFilter);
+                registerReceiver(mReceiver, powerOffFilter);
             }
         } else if (Objects.equals(intent.getAction(), ACTION_PAUSE_RECORDING)) {
-            audioManager.abandonAudioFocus(afChangeListener);
+            mAudioManager.abandonAudioFocus(mAFChangeListener);
             pause();
         } else if (Objects.equals(intent.getAction(), ACTION_RESUME_RECORDING)) {
-            int result = audioManager.requestAudioFocus(afChangeListener,
+            int result = mAudioManager.requestAudioFocus(mAFChangeListener,
                     // Use the music stream.
                     AudioManager.STREAM_MUSIC,
                     // Request permanent focus.
@@ -154,15 +153,15 @@ public class RecorderService extends Service {
 
     @Override
     public void onDestroy() {
-        executor.shutdown();
-        unregisterReceiver(receiver);
-        if (recorder != null) {
-            audioManager.abandonAudioFocus(afChangeListener);
-            handler.removeCallbacks(sendUpdatesToUI);
-            recorder.stop();
-            recorder.reset();
-            recorder.release();
-            recorder = null;
+        mExecutor.shutdown();
+        unregisterReceiver(mReceiver);
+        if (mRecorder != null) {
+            mAudioManager.abandonAudioFocus(mAFChangeListener);
+            mHandler.removeCallbacks(sendUpdatesToUI);
+            mRecorder.stop();
+            mRecorder.reset();
+            mRecorder.release();
+            mRecorder = null;
             mPref.put(SharedPreferenceManager.Key.RECORD_STATUS_KEY,RecordFragment.STATUS_STOPPED);
             File file = new File(appDir, fileName);
             long length = file.length();
@@ -207,35 +206,35 @@ public class RecorderService extends Service {
 
     private void pause(){
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            handler.removeCallbacks(sendUpdatesToUI);
-            recorder.pause();
+            mHandler.removeCallbacks(sendUpdatesToUI);
+            mRecorder.pause();
             timeInMilliseconds += SystemClock.uptimeMillis() - initial_time;
             mPref.put(SharedPreferenceManager.Key.RECORD_STATUS_KEY,RecordFragment.STATUS_PAUSED);
             mPref.put(SharedPreferenceManager.Key.PAUSE_POSITION,Math.round(timeInMilliseconds/1000f));
 
             createNotification(RecordFragment.STATUS_PAUSED);
-            LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(broadcastPause);
+            LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(mPauseBroadcast);
         }
     }
 
     private void stop(){
-        audioManager.abandonAudioFocus(afChangeListener);
-        handler.removeCallbacks(sendUpdatesToUI);
-        recorder.stop();
-        recorder.reset();
-        recorder.release();
-        recorder = null;
-        executor.execute(saveFileRunnable);
+        mAudioManager.abandonAudioFocus(mAFChangeListener);
+        mHandler.removeCallbacks(sendUpdatesToUI);
+        mRecorder.stop();
+        mRecorder.reset();
+        mRecorder.release();
+        mRecorder = null;
+        mExecutor.execute(saveFileRunnable);
     }
 
     private void resume() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             initial_time = SystemClock.uptimeMillis();
-            recorder.resume();
-            handler.postDelayed(sendUpdatesToUI, 0);
+            mRecorder.resume();
+            mHandler.postDelayed(sendUpdatesToUI, 0);
             mPref.put(SharedPreferenceManager.Key.RECORD_STATUS_KEY, RecordFragment.STATUS_RECORDING);
             createNotification(RecordFragment.STATUS_RECORDING);
-            LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(broadcastResume);
+            LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(mResumeBroadcast);
         }
     }
 
@@ -247,36 +246,36 @@ public class RecorderService extends Service {
             dateNow = new Date();
             fileName = "Recording_" + nameFormat.format(dateNow);
             // Configure Media Recorder
-            recorder = new MediaRecorder();
-            recorder.setAudioSource(MediaRecorder.AudioSource.DEFAULT);
+            mRecorder = new MediaRecorder();
+            mRecorder.setAudioSource(MediaRecorder.AudioSource.DEFAULT);
             int audioFormat = mPref.getInt(SharedPreferenceManager.Key.QUALITY_KEY,MainActivity.QUALITY_GOOD);
             switch (audioFormat) {
                 case MainActivity.QUALITY_GOOD:
-                    recorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
-                    recorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
-                    recorder.setAudioSamplingRate(48000);
-                    recorder.setAudioEncodingBitRate(320000);
+                    mRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
+                    mRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
+                    mRecorder.setAudioSamplingRate(48000);
+                    mRecorder.setAudioEncodingBitRate(320000);
                     fileName += "." + AAC;
                     break;
                 case MainActivity.QUALITY_SMALL:
-                    recorder.setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP);
-                    recorder.setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB);
-                    recorder.setAudioSamplingRate(48000);
-                    recorder.setAudioEncodingBitRate(128000);
+                    mRecorder.setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP);
+                    mRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB);
+                    mRecorder.setAudioSamplingRate(48000);
+                    mRecorder.setAudioEncodingBitRate(128000);
                     fileName += "." + THREE_GPP;
                     break;
                 default:
-                    recorder.setOutputFormat(MediaRecorder.OutputFormat.DEFAULT);
-                    recorder.setAudioEncoder(MediaRecorder.AudioEncoder.DEFAULT);
-                    recorder.setAudioSamplingRate(16000);
-                    recorder.setAudioEncodingBitRate(128000);
+                    mRecorder.setOutputFormat(MediaRecorder.OutputFormat.DEFAULT);
+                    mRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.DEFAULT);
+                    mRecorder.setAudioSamplingRate(16000);
+                    mRecorder.setAudioEncodingBitRate(128000);
                     fileName += "." + AAC;
                     break;
             }
-            recorder.setOutputFile(appDir + File.separator + fileName);
+            mRecorder.setOutputFile(appDir + File.separator + fileName);
             try {
-                recorder.prepare();
-                recorder.start();
+                mRecorder.prepare();
+                mRecorder.start();
                 mPref.put(SharedPreferenceManager.Key.RECORD_STATUS_KEY,RecordFragment.STATUS_RECORDING);
                 new Handler(getMainLooper()).post(new Runnable() {
                     @Override
@@ -287,8 +286,8 @@ public class RecorderService extends Service {
                     }
                 });
                 initial_time = SystemClock.uptimeMillis();
-                handler.removeCallbacks(sendUpdatesToUI);
-                handler.postDelayed(sendUpdatesToUI, 0);
+                mHandler.removeCallbacks(sendUpdatesToUI);
+                mHandler.postDelayed(sendUpdatesToUI, 0);
             } catch (IllegalStateException | IOException e) {
                 e.printStackTrace();
             }
@@ -320,13 +319,17 @@ public class RecorderService extends Service {
                 hashValue = String.format("%32s", hashValue).replace(' ', '0');
                 String formattedDate;
                 if (dateNoFormat != null) {
-                    SimpleDateFormat readDateFormat = new SimpleDateFormat("yyyyMMdd'T'HHmmss.SSS'Z'", Locale.getDefault());
+                    SimpleDateFormat readDateFormat =
+                            new SimpleDateFormat("yyyyMMdd'T'HHmmss.SSS'Z'", Locale.getDefault());
                     readDateFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
                     Date inputDate = readDateFormat.parse(dateNoFormat);
-                    SimpleDateFormat dateFormat = new SimpleDateFormat("MM/dd/yyyy HH:mm:ss", Locale.getDefault());
+                    SimpleDateFormat dateFormat =
+                            new SimpleDateFormat("MM/dd/yyyy HH:mm:ss", Locale.getDefault());
                     formattedDate = dateFormat.format(inputDate);
                 } else {
-                    formattedDate = new SimpleDateFormat("MM/dd/yyyy HH:mm:ss", Locale.getDefault()).format(dateNow);
+                    formattedDate =
+                            new SimpleDateFormat("MM/dd/yyyy HH:mm:ss", Locale.getDefault())
+                                    .format(dateNow);
                 }
                 RecordingsDbHelper dbHelper = new RecordingsDbHelper(getApplicationContext());
                 dbHelper.insert(fileName, length, Integer.parseInt(duration), formattedDate, hashValue);

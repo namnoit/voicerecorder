@@ -31,7 +31,6 @@ import com.namnoit.voicerecorder.ui.main.RecordingsFragment;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigInteger;
@@ -44,22 +43,24 @@ import java.util.Objects;
 
 public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.ViewHolder>{
     public static final String HASH_ALGORITHM = "SHA-256";
-    private int selectedPosition = RecyclerView.NO_POSITION;
-    private ArrayList<Recording> recordingsList;
-    private Context context;
-    private RecordingsDbHelper db;
+    private int mSelectedPosition = RecyclerView.NO_POSITION;
+    private ArrayList<Recording> mRecordingsList;
+    private Context mContext;
+    private RecordingsDbHelper mDb;
     private String appDir;
 
 
     public RecordingsAdapter(ArrayList<Recording> recordings, Context c){
-        recordingsList = recordings;
-        context = c;
-        db = new RecordingsDbHelper(context);
+        mRecordingsList = recordings;
+        mContext = c;
+        mDb = new RecordingsDbHelper(mContext);
         if (isServiceRunning(RecordingPlaybackService.class)) {
-            selectedPosition = SharedPreferenceManager.getInstance().getInt(SharedPreferenceManager.Key.CURRENT_POSITION_KEY,RecyclerView.NO_POSITION);
+            mSelectedPosition = SharedPreferenceManager
+                    .getInstance()
+                    .getInt(SharedPreferenceManager.Key.CURRENT_POSITION_KEY,RecyclerView.NO_POSITION);
         }
         appDir = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q?
-                Objects.requireNonNull(context.getExternalFilesDir(null)).getAbsolutePath() +
+                Objects.requireNonNull(mContext.getExternalFilesDir(null)).getAbsolutePath() +
                         File.separator +
                         MainActivity.APP_FOLDER :
                 MainActivity.APP_DIR;
@@ -75,58 +76,58 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
 
     @Override
     public void onBindViewHolder(@NonNull final ViewHolder holder, final int position) {
-        holder.textName.setText(recordingsList.get(position).getName());
-        if (recordingsList.get(position).getLocation()!=Recording.LOCATION_ON_DRIVE) {
-            final int seconds = Math.round((float) recordingsList.get(position).getDuration() / 1000);
+        holder.textName.setText(mRecordingsList.get(position).getName());
+        if (mRecordingsList.get(position).getLocation()!=Recording.LOCATION_ON_DRIVE) {
+            final int seconds = Math.round((float) mRecordingsList.get(position).getDuration() / 1000);
             long s = seconds % 60;
             long m = (seconds / 60) % 60;
             long h = (seconds / (60 * 60)) % 24;
             final String dur = String.format(Locale.getDefault(), "%02d:%02d:%02d", h, m, s);
-            holder.textDuration.setText(dur);
-            holder.textDate.setVisibility(View.VISIBLE);
-            holder.textDate.setText(recordingsList.get(position).getDate());
-            if (recordingsList.get(position).getLocation()==Recording.LOCATION_PHONE_DRIVE)
+            String durationTime = dur + "  " + mRecordingsList.get(position).getDate();
+            holder.textDuration.setText(durationTime);
+            if (mRecordingsList.get(position).getLocation()==Recording.LOCATION_PHONE_DRIVE)
                 holder.line.setVisibility(View.VISIBLE);
             else holder.line.setVisibility(View.INVISIBLE);
             holder.buttonMore.setImageResource(R.drawable.ic_more);
         } else{
             holder.textDuration.setText(R.string.on_drive);
-            holder.textDate.setVisibility(View.INVISIBLE);
             holder.line.setVisibility(View.INVISIBLE);
             holder.buttonMore.setImageResource(R.drawable.ic_download);
         }
 
-        if (position == selectedPosition) holder.icon.setImageResource(R.drawable.ic_play_red);
+        if (position == mSelectedPosition) holder.icon.setImageResource(R.drawable.ic_play_red);
         else holder.icon.setImageResource(R.drawable.ic_mic);
         holder.itemView.setEnabled(true);
         holder.buttonMore.setEnabled(true);
         holder.itemView.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if (recordingsList.get(position).getLocation()==Recording.LOCATION_ON_DRIVE){
+                if (mRecordingsList.get(position).getLocation()==Recording.LOCATION_ON_DRIVE){
                     if (isInternetAvailable()) {
                         holder.itemView.setEnabled(false);
+                        holder.buttonMore.setImageResource(R.drawable.ic_sync_grey);
                         Intent broadcast = new Intent(RecordingsFragment.BROADCAST_DOWNLOAD_REQUEST);
-                        broadcast.putExtra(RecordingsFragment.KEY_FILE_NAME, recordingsList.get(position).getName());
-                        broadcast.putExtra(RecordingsFragment.KEY_FILE_ID, recordingsList.get(position).getHashValue());
-                        LocalBroadcastManager.getInstance(context).sendBroadcast(broadcast);
+                        broadcast.putExtra(RecordingsFragment.KEY_FILE_NAME, mRecordingsList.get(position).getName());
+                        broadcast.putExtra(RecordingsFragment.KEY_FILE_ID, mRecordingsList.get(position).getHashValue());
+                        LocalBroadcastManager.getInstance(mContext).sendBroadcast(broadcast);
                     }
                     return;
                 }
-                File file = new File(appDir, recordingsList.get(position).getName());
-                if (!isFileChanged(file,recordingsList.get(position).getHashValue(),position)){
-                    notifyItemChanged(selectedPosition);
-                    selectedPosition = position;
-                    notifyItemChanged(selectedPosition);
-                    SharedPreferenceManager.getInstance().put(SharedPreferenceManager.Key.CURRENT_POSITION_ADAPTER_KEY,position);
+                File file = new File(appDir, mRecordingsList.get(position).getName());
+                if (!isFileChanged(file, mRecordingsList.get(position).getHashValue(),position)){
+                    notifyItemChanged(mSelectedPosition);
+                    mSelectedPosition = position;
+                    notifyItemChanged(mSelectedPosition);
+                    SharedPreferenceManager.getInstance()
+                            .put(SharedPreferenceManager.Key.CURRENT_POSITION_ADAPTER_KEY,position);
                     if (isServiceRunning(RecorderService.class)) {
-                        Intent stopServiceIntent = new Intent(context, RecorderService.class);
-                        context.stopService(stopServiceIntent);
+                        Intent stopServiceIntent = new Intent(mContext, RecorderService.class);
+                        mContext.stopService(stopServiceIntent);
                     }
-                    Intent intent = new Intent(context, RecordingPlaybackService.class);
-                    intent.putExtra(RecordingsFragment.KEY_FILE_NAME, recordingsList.get(position).getName());
+                    Intent intent = new Intent(mContext, RecordingPlaybackService.class);
+                    intent.putExtra(RecordingsFragment.KEY_FILE_NAME, mRecordingsList.get(position).getName());
                     intent.setAction("PLAY");
-                    context.startService(intent);
+                    mContext.startService(intent);
                 }
             }
         });
@@ -140,24 +141,25 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
         holder.buttonMore.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if (recordingsList.get(position).getLocation()==Recording.LOCATION_ON_DRIVE){
+                if (mRecordingsList.get(position).getLocation()==Recording.LOCATION_ON_DRIVE){
                     if (isInternetAvailable()) {
                         holder.buttonMore.setEnabled(false);
+                        holder.buttonMore.setImageResource(R.drawable.ic_sync_grey);
                         Intent broadcast = new Intent(RecordingsFragment.BROADCAST_DOWNLOAD_REQUEST);
-                        broadcast.putExtra(RecordingsFragment.KEY_FILE_NAME, recordingsList.get(position).getName());
-                        broadcast.putExtra(RecordingsFragment.KEY_FILE_ID, recordingsList.get(position).getHashValue());
-                        LocalBroadcastManager.getInstance(context).sendBroadcast(broadcast);
+                        broadcast.putExtra(RecordingsFragment.KEY_FILE_NAME, mRecordingsList.get(position).getName());
+                        broadcast.putExtra(RecordingsFragment.KEY_FILE_ID, mRecordingsList.get(position).getHashValue());
+                        LocalBroadcastManager.getInstance(mContext).sendBroadcast(broadcast);
                     }
                     return;
                 }
-                final AlertDialog.Builder dialogBuilder = new AlertDialog.Builder(context);
-                LayoutInflater inflater = LayoutInflater.from(context);
+                final AlertDialog.Builder dialogBuilder = new AlertDialog.Builder(mContext);
+                LayoutInflater inflater = LayoutInflater.from(mContext);
                 final View convertView = inflater.inflate(R.layout.dialog_menu_about,null);
                 View shareMenu = convertView.findViewById(R.id.menu_share);
                 View renameMenu = convertView.findViewById(R.id.menu_rename);
                 View detailsMenu = convertView.findViewById(R.id.menu_details);
                 View deleteMenu = convertView.findViewById(R.id.menu_delete);
-                final String[] fileName = recordingsList.get(position).getName().split("\\.");
+                final String[] fileName = mRecordingsList.get(position).getName().split("\\.");
                 dialogBuilder.setTitle(holder.textName.getText())
                         .setView(convertView)
                         .setPositiveButton(R.string.cancel, new DialogInterface.OnClickListener() {
@@ -174,15 +176,15 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
                         File recording = new File(
                                 appDir,
                                 holder.textName.getText().toString());
-                        if (!isFileChanged(recording, recordingsList.get(position).getHashValue(), position)) {
+                        if (!isFileChanged(recording, mRecordingsList.get(position).getHashValue(), position)) {
                             StrictMode.VmPolicy.Builder builder = new StrictMode.VmPolicy.Builder();
                             StrictMode.setVmPolicy(builder.build());
                             Uri uri = Uri.fromFile(recording);
                             Intent share = new Intent(Intent.ACTION_SEND);
                             share.putExtra(Intent.EXTRA_STREAM, uri);
                             share.setType("audio/*");
-                            context.startActivity(
-                                    Intent.createChooser(share, context.getResources().getString(R.string.menu_share)));
+                            mContext.startActivity(
+                                    Intent.createChooser(share, mContext.getResources().getString(R.string.menu_share)));
                         }
                     }
                 });
@@ -192,12 +194,12 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
                         dialog.cancel();
                         final File oldFile = new File(
                                 appDir, holder.textName.getText().toString());
-                        if (!isFileChanged(oldFile, recordingsList.get(position).getHashValue(), position)) {
-                            final EditText textFileName = new EditText(context);
+                        if (!isFileChanged(oldFile, mRecordingsList.get(position).getHashValue(), position)) {
+                            final EditText textFileName = new EditText(mContext);
                             textFileName.setText(fileName[0]);
                             textFileName.selectAll();
                             textFileName.requestFocus();
-                            AlertDialog alertDialog = new AlertDialog.Builder(context)
+                            AlertDialog alertDialog = new AlertDialog.Builder(mContext)
                                     .setTitle(R.string.file_name)
                                     .setView(textFileName)
                                     .setPositiveButton(R.string.ok, new DialogInterface.OnClickListener() {
@@ -207,12 +209,18 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
                                             File newFile = new File(
                                                     appDir, newName);
                                             if (oldFile.renameTo(newFile)) {
-                                                db.updateName(recordingsList.get(position).getID(), newName);
-                                                recordingsList.get(position).setName(newName);
+                                                mDb.updateName(mRecordingsList.get(position).getID(), newName);
+                                                mRecordingsList.get(position).setName(newName);
                                                 notifyItemChanged(position);
-                                                Toast.makeText(context, R.string.rename_success, Toast.LENGTH_SHORT).show();
+                                                Toast.makeText(mContext,
+                                                        R.string.rename_success,
+                                                        Toast.LENGTH_SHORT)
+                                                        .show();
                                             } else
-                                                Toast.makeText(context, R.string.rename_failed, Toast.LENGTH_SHORT).show();
+                                                Toast.makeText(mContext,
+                                                        R.string.rename_failed,
+                                                        Toast.LENGTH_SHORT)
+                                                        .show();
                                         }
                                     })
                                     .setNegativeButton(R.string.cancel, new DialogInterface.OnClickListener() {
@@ -231,18 +239,18 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
                     @Override
                     public void onClick(View view) {
                         dialog.cancel();
-                        final AlertDialog.Builder detailBuilder = new AlertDialog.Builder(context);
-                        LayoutInflater inflater = LayoutInflater.from(context);
+                        final AlertDialog.Builder detailBuilder = new AlertDialog.Builder(mContext);
+                        LayoutInflater inflater = LayoutInflater.from(mContext);
                         final View detailsDialogLayout = inflater.inflate(R.layout.dialog_details, null);
                         // File name
                         TextView textNameDetails = detailsDialogLayout.findViewById(R.id.text_details_title);
-                        textNameDetails.setText(recordingsList.get(position).getName());
+                        textNameDetails.setText(mRecordingsList.get(position).getName());
                         // Duration
                         TextView textDurationDetails = detailsDialogLayout.findViewById(R.id.text_details_duration);
-                        textDurationDetails.setText(holder.textDuration.getText());
+                        textDurationDetails.setText(holder.textDuration.getText().subSequence(0,8));
                         // Size
                         TextView textSize = detailsDialogLayout.findViewById(R.id.text_details_size);
-                        long fileSize = recordingsList.get(position).getSize();
+                        long fileSize = mRecordingsList.get(position).getSize();
                         String strSize;
                         if (fileSize < 1024) {
                             strSize = fileSize + " bytes";
@@ -256,16 +264,16 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
                         textSize.setText(strSize);
                         // Time
                         TextView textTime = detailsDialogLayout.findViewById(R.id.text_details_time);
-                        textTime.setText(recordingsList.get(position).getDate());
+                        textTime.setText(mRecordingsList.get(position).getDate());
                         // Format
                         TextView textFormat = detailsDialogLayout.findViewById(R.id.text_details_format);
                         if (fileName[1].equals(RecorderService.AAC)) {
-                            textFormat.setText(context.getResources().getString(R.string.quality_good));
+                            textFormat.setText(mContext.getResources().getString(R.string.quality_good));
                         } else
-                            textFormat.setText(context.getResources().getString(R.string.quality_small));
+                            textFormat.setText(mContext.getResources().getString(R.string.quality_small));
                         // Location
                         ImageView drive = detailsDialogLayout.findViewById(R.id.image_drive);
-                        drive.setVisibility(recordingsList.get(position).getLocation() == Recording.LOCATION_ON_PHONE ?
+                        drive.setVisibility(mRecordingsList.get(position).getLocation() == Recording.LOCATION_ON_PHONE ?
                                 View.INVISIBLE :
                                 View.VISIBLE);
                         detailBuilder.setView(detailsDialogLayout)
@@ -282,27 +290,27 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
                     public void onClick(View view) {
                         dialog.cancel();
                         final File deleteFile = new File(appDir, holder.textName.getText().toString());
-                        if (!isFileChanged(deleteFile, recordingsList.get(position).getHashValue(), position)) {
-                            AlertDialog.Builder deleteDialogBuilder = new AlertDialog.Builder(context);
+                        if (!isFileChanged(deleteFile, mRecordingsList.get(position).getHashValue(), position)) {
+                            AlertDialog.Builder deleteDialogBuilder = new AlertDialog.Builder(mContext);
                             deleteDialogBuilder.setTitle(R.string.delete_title)
                                     .setMessage(fileName[0] + " "
-                                            + context.getResources().getString(R.string.will_be_deleted))
+                                            + mContext.getResources().getString(R.string.will_be_deleted))
                                     .setPositiveButton(R.string.ok, new DialogInterface.OnClickListener() {
                                         @Override
                                         public void onClick(DialogInterface dialog, int which) {
-                                            db.delete(recordingsList.get(position).getID());
-                                            recordingsList.remove(position);
+                                            mDb.delete(mRecordingsList.get(position).getID());
+                                            mRecordingsList.remove(position);
                                             notifyItemRemoved(position);
                                             notifyItemRangeChanged(position, getItemCount());
                                             // Delete file
                                             if (deleteFile.delete()) {
-                                                if (selectedPosition == position)
-                                                    selectedPosition = RecyclerView.NO_POSITION;
-                                                else if (selectedPosition > position)
-                                                    selectedPosition--;
+                                                if (mSelectedPosition == position)
+                                                    mSelectedPosition = RecyclerView.NO_POSITION;
+                                                else if (mSelectedPosition > position)
+                                                    mSelectedPosition--;
                                             } else
-                                                Toast.makeText(context,
-                                                        context.getResources().getString(R.string.delete_failed),
+                                                Toast.makeText(mContext,
+                                                        mContext.getResources().getString(R.string.delete_failed),
                                                         Toast.LENGTH_SHORT).show();
                                         }
                                     })
@@ -330,11 +338,11 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
 
     @Override
     public int getItemCount() {
-        return recordingsList.size();
+        return mRecordingsList.size();
     }
 
     private boolean isServiceRunning(Class<?> serviceClass) {
-        ActivityManager manager = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
+        ActivityManager manager = (ActivityManager) mContext.getSystemService(Context.ACTIVITY_SERVICE);
         if (manager == null) return false;
         for (ActivityManager.RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
             if (serviceClass.getName().equals(service.service.getClassName())) {
@@ -345,12 +353,12 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
     }
 
     public void updateSelectedPosition(){
-        if (selectedPosition != RecyclerView.NO_POSITION)
-            selectedPosition++;
+        if (mSelectedPosition != RecyclerView.NO_POSITION)
+            mSelectedPosition++;
     }
 
     class ViewHolder extends RecyclerView.ViewHolder{
-        private TextView textName, textDuration, textDate;
+        private TextView textName, textDuration;
         private ImageButton buttonMore;
         private ImageView icon, line;
         ViewHolder(@NonNull View itemView) {
@@ -359,7 +367,6 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
             buttonMore = itemView.findViewById(R.id.buttonMore);
             textName = itemView.findViewById(R.id.item_recording_name);
             textDuration = itemView.findViewById(R.id.item_recording_duration);
-            textDate = itemView.findViewById(R.id.item_recording_date);
             line = itemView.findViewById(R.id.line);
         }
 
@@ -383,16 +390,12 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
                 // Fill to 32 chars
                 newMD5 = String.format("%32s", newMD5).replace(' ', '0');
                 isChanged = !newMD5.equals(md5);
-            } catch (NoSuchAlgorithmException e) {
-                e.printStackTrace();
-            } catch (FileNotFoundException e) {
-                e.printStackTrace();
-            } catch (IOException e) {
+            } catch (NoSuchAlgorithmException | IOException e) {
                 e.printStackTrace();
             }
         }
         if (isChanged){
-            final AlertDialog dialog = new AlertDialog.Builder(context)
+            final AlertDialog dialog = new AlertDialog.Builder(mContext)
                     .setTitle(R.string.recording_not_found)
                     .setMessage(R.string.recording_not_found_message)
                     .setPositiveButton(R.string.ok, new DialogInterface.OnClickListener() {
@@ -404,14 +407,14 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
                     .setOnCancelListener(new DialogInterface.OnCancelListener() {
                         @Override
                         public void onCancel(DialogInterface dialog) {
-                            db.delete(recordingsList.get(position).getID());
-                            recordingsList.remove(position);
+                            mDb.delete(mRecordingsList.get(position).getID());
+                            mRecordingsList.remove(position);
                             notifyItemRemoved(position);
                             notifyItemRangeChanged(position, getItemCount());
-                            if (selectedPosition == position)
-                                selectedPosition = RecyclerView.NO_POSITION;
-                            else if (selectedPosition > position)
-                                selectedPosition--;
+                            if (mSelectedPosition == position)
+                                mSelectedPosition = RecyclerView.NO_POSITION;
+                            else if (mSelectedPosition > position)
+                                mSelectedPosition--;
                         }
                     }).create();
             dialog.show();
@@ -420,10 +423,11 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
     }
 
     private boolean isInternetAvailable() {
-        ConnectivityManager cm = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
+        ConnectivityManager cm =
+                (ConnectivityManager) mContext.getSystemService(Context.CONNECTIVITY_SERVICE);
         boolean internet = cm != null && cm.getActiveNetworkInfo() != null;
         if (!internet) {
-            Toast.makeText(context,R.string.connection_failed,Toast.LENGTH_LONG).show();
+            Toast.makeText(mContext,R.string.connection_failed,Toast.LENGTH_LONG).show();
         }
         return internet;
     }

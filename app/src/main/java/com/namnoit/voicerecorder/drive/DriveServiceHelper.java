@@ -62,30 +62,30 @@ public class DriveServiceHelper {
     private static final String DEFAULT_CHANNEL_ID = "ez_voice_recorder_default";
     private static final String IMPORTANCE_CHANNEL_ID = "ez_voice_recorder_importance";
     private static int NOTIFICATION_ID;
-    private Context context;
-    private ExecutorService executor;
+    private Context mContext;
+    private ExecutorService mExecutor;
     private Drive mDriveService;
-    private ArrayList<Recording> localList;
-    private RecordingsAdapter adapter;
-    private RecordingsDbHelper db;
+    private ArrayList<Recording> mLocalList;
+    private RecordingsAdapter mAdapter;
+    private RecordingsDbHelper mDb;
     private String appDir;
     public DriveServiceHelper(Context c, Drive drive, ArrayList<Recording> list,RecordingsAdapter adapter){
-        context = c;
+        mContext = c;
         mDriveService = drive;
-        localList = list;
-        this.adapter = adapter;
-        db = new RecordingsDbHelper(context);
+        mLocalList = list;
+        this.mAdapter = adapter;
+        mDb = new RecordingsDbHelper(mContext);
         NOTIFICATION_ID = 100;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            NotificationManager manager = context.getSystemService(NotificationManager.class);
+            NotificationManager manager = mContext.getSystemService(NotificationManager.class);
             NotificationChannel serviceChannel = new NotificationChannel(
                     DEFAULT_CHANNEL_ID,
-                    context.getResources().getString(R.string.alert_channel),
+                    mContext.getResources().getString(R.string.alert_channel),
                     NotificationManager.IMPORTANCE_LOW
             );
             NotificationChannel pushNotificationChannel = new NotificationChannel(
                     IMPORTANCE_CHANNEL_ID,
-                    context.getResources().getString(R.string.importance_alert_channel),
+                    mContext.getResources().getString(R.string.importance_alert_channel),
                     NotificationManager.IMPORTANCE_HIGH
             );
             if (manager != null) {
@@ -94,7 +94,7 @@ public class DriveServiceHelper {
             }
         }
         appDir = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q?
-                Objects.requireNonNull(context.getExternalFilesDir(null)).getAbsolutePath() +
+                Objects.requireNonNull(mContext.getExternalFilesDir(null)).getAbsolutePath() +
                         File.separator +
                         MainActivity.APP_FOLDER :
                 MainActivity.APP_DIR;
@@ -104,15 +104,15 @@ public class DriveServiceHelper {
         @Override
         public void run() {
             Notification pushNotification =
-                    new NotificationCompat.Builder(context, IMPORTANCE_CHANNEL_ID)
-                            .setContentTitle(context.getResources().getString(R.string.app_name))
-                            .setContentText(context.getText(R.string.backup_in_progress))
+                    new NotificationCompat.Builder(mContext, IMPORTANCE_CHANNEL_ID)
+                            .setContentTitle(mContext.getResources().getString(R.string.app_name))
+                            .setContentText(mContext.getText(R.string.backup_in_progress))
                             .setSmallIcon(R.drawable.ic_mic_foreground)
-                            .setColor(context.getResources().getColor(R.color.colorPrimary))
+                            .setColor(mContext.getResources().getColor(R.color.colorPrimary))
                             .setPriority(NotificationCompat.PRIORITY_HIGH)
                             .setDefaults(Notification.DEFAULT_ALL)
                             .build();
-            NotificationManagerCompat notificationManager = NotificationManagerCompat.from(context);
+            NotificationManagerCompat notificationManager = NotificationManagerCompat.from(mContext);
             notificationManager.notify(NOTIFICATION_ID+1,pushNotification);
             String folderId = "";
             FileList filesAppData;
@@ -136,13 +136,13 @@ public class DriveServiceHelper {
             } catch (UserRecoverableAuthIOException e) {
                 Intent errorIntent = e.getIntent();
                 errorIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                context.startActivity(errorIntent);
-                Handler handler = new Handler(context.getMainLooper());
+                mContext.startActivity(errorIntent);
+                Handler handler = new Handler(mContext.getMainLooper());
                 handler.post(new Runnable() {
                     @Override
                     public void run() {
-                        Toast.makeText(context.getApplicationContext(),
-                                context.getResources().getString(R.string.toast_permissions_check_failed),
+                        Toast.makeText(mContext.getApplicationContext(),
+                                mContext.getResources().getString(R.string.toast_permissions_check_failed),
                                 Toast.LENGTH_LONG).show();
                     }
                 });
@@ -158,7 +158,7 @@ public class DriveServiceHelper {
             // Folder has not been created yet, create new folder
             if (folderId.equals("")) {
                 com.google.api.services.drive.model.File fileMetadata = new com.google.api.services.drive.model.File();
-                fileMetadata.setName(context.getResources().getString(R.string.app_name));
+                fileMetadata.setName(mContext.getResources().getString(R.string.app_name));
                 fileMetadata.setMimeType(TYPE_FOLDER);
                 try {
                     com.google.api.services.drive.model.File folder = mDriveService.files().create(fileMetadata)
@@ -167,14 +167,14 @@ public class DriveServiceHelper {
 
                     JSONObject json = new JSONObject();
                     json.put(FOLDER_ID, folderId = folder.getId());
-                    FileWriter fileWriter = new FileWriter(context.getCacheDir() + File.separator + CONFIG_FILE);
+                    FileWriter fileWriter = new FileWriter(mContext.getCacheDir() + File.separator + CONFIG_FILE);
                     fileWriter.write(json.toString());
                     fileWriter.close();
 
                     com.google.api.services.drive.model.File fileMetadataJson = new com.google.api.services.drive.model.File();
                     fileMetadataJson.setName(CONFIG_FILE);
                     fileMetadataJson.setParents(Collections.singletonList("appDataFolder"));
-                    File jsonFile = new File(context.getCacheDir() + File.separator + CONFIG_FILE);
+                    File jsonFile = new File(mContext.getCacheDir() + File.separator + CONFIG_FILE);
                     FileContent jsonContent = new FileContent(TYPE_JSON, jsonFile);
                     mDriveService.files().create(fileMetadataJson, jsonContent)
                             .setFields("id")
@@ -182,13 +182,13 @@ public class DriveServiceHelper {
                 } catch (UserRecoverableAuthIOException e) {
                     Intent errorIntent = e.getIntent();
                     errorIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                    context.startActivity(errorIntent);
-                    Handler handler = new Handler(context.getMainLooper());
+                    mContext.startActivity(errorIntent);
+                    Handler handler = new Handler(mContext.getMainLooper());
                     handler.post(new Runnable() {
                         @Override
                         public void run() {
-                            Toast.makeText(context.getApplicationContext(),
-                                    context.getResources().getString(R.string.toast_permissions_check_failed),
+                            Toast.makeText(mContext.getApplicationContext(),
+                                    mContext.getResources().getString(R.string.toast_permissions_check_failed),
                                     Toast.LENGTH_LONG).show();
                         }
                     });
@@ -217,9 +217,9 @@ public class DriveServiceHelper {
                     e.printStackTrace();
                 }
             }
-            RecordingsDbHelper db = new RecordingsDbHelper(context);
+            RecordingsDbHelper db = new RecordingsDbHelper(mContext);
             ArrayList<Recording> localList = db.getAll();
-            // localList: Files in local
+            // mLocalList: Files in local
             // driveList: Files in Google Drive
             boolean shouldCancelNotification = true;
             for (Recording recording : localList) {
@@ -233,10 +233,10 @@ public class DriveServiceHelper {
                 if (!exist) {
                     shouldCancelNotification = false;
                     UploadThread uploadThread = new UploadThread(recording.getName(), folderId, recording.getHashValue());
-                    executor.execute(uploadThread);
+                    mExecutor.execute(uploadThread);
                 }
             }
-            executor.shutdown();
+            mExecutor.shutdown();
             if (shouldCancelNotification)
                 notificationManager.cancel(NOTIFICATION_ID+1);
         }
@@ -244,22 +244,22 @@ public class DriveServiceHelper {
 
 
     public void backUp() {
-        executor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
-        executor.execute(backUpRunnable);
+        mExecutor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+        mExecutor.execute(backUpRunnable);
     }
 
 
     public void sync(){
-        executor = Executors.newSingleThreadExecutor();
-        executor.execute(syncRunnable);
-        executor.shutdown();
+        mExecutor = Executors.newSingleThreadExecutor();
+        mExecutor.execute(syncRunnable);
+        mExecutor.shutdown();
     }
 
     public void downloadFile(String fileId, String fileName){
         DownLoadThread thread = new DownLoadThread(fileId,fileName);
-        executor = Executors.newSingleThreadExecutor();
-        executor.execute(thread);
-        executor.shutdown();
+        mExecutor = Executors.newSingleThreadExecutor();
+        mExecutor.execute(thread);
+        mExecutor.shutdown();
     }
 
 
@@ -284,26 +284,26 @@ public class DriveServiceHelper {
                     mDriveService.files().create(fileMetadata, mediaContent)
                             .setFields("id, parents")
                             .execute();
-                    Intent notificationIntent = new Intent(context, MainActivity.class);
+                    Intent notificationIntent = new Intent(mContext, MainActivity.class);
                     notificationIntent.setAction(Intent.ACTION_MAIN);
                     notificationIntent.addCategory(Intent.CATEGORY_LAUNCHER);
                     notificationIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                     PendingIntent pendingIntent =
-                            PendingIntent.getActivity(context, 0, notificationIntent, 0);
+                            PendingIntent.getActivity(mContext, 0, notificationIntent, 0);
                     Notification notification =
-                            new NotificationCompat.Builder(context, DEFAULT_CHANNEL_ID)
+                            new NotificationCompat.Builder(mContext, DEFAULT_CHANNEL_ID)
                                     .setContentTitle(fileName)
-                                    .setContentText(context.getText(R.string.notification_text_uploaded))
+                                    .setContentText(mContext.getText(R.string.notification_text_uploaded))
                                     .setSmallIcon(R.drawable.ic_mic_foreground)
                                     .setContentIntent(pendingIntent)
                                     .setAutoCancel(true)
-                                    .setColor(context.getResources().getColor(R.color.colorPrimary))
+                                    .setColor(mContext.getResources().getColor(R.color.colorPrimary))
                                     .build();
-                    NotificationManagerCompat notificationManager = NotificationManagerCompat.from(context);
+                    NotificationManagerCompat notificationManager = NotificationManagerCompat.from(mContext);
                     notificationManager.notify(++NOTIFICATION_ID,notification);
                     Intent broadcast = new Intent(RecordingsFragment.BROADCAST_FILE_UPLOADED);
                     broadcast.putExtra(RecordingsFragment.KEY_HASH_VALUE,hashValue);
-                    LocalBroadcastManager.getInstance(context).sendBroadcast(broadcast);
+                    LocalBroadcastManager.getInstance(mContext).sendBroadcast(broadcast);
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
@@ -358,28 +358,28 @@ public class DriveServiceHelper {
                 } else {
                     formattedDate = new SimpleDateFormat("MM/dd/yyyy HH:mm:ss", Locale.getDefault()).format(new Date());
                 }
-                Intent notificationIntent = new Intent(context, MainActivity.class);
+                Intent notificationIntent = new Intent(mContext, MainActivity.class);
                 notificationIntent.setAction(Intent.ACTION_MAIN);
                 notificationIntent.addCategory(Intent.CATEGORY_LAUNCHER);
                 notificationIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                 PendingIntent pendingIntent =
-                        PendingIntent.getActivity(context, 0, notificationIntent, 0);
+                        PendingIntent.getActivity(mContext, 0, notificationIntent, 0);
                 Notification notification =
-                        new NotificationCompat.Builder(context, DEFAULT_CHANNEL_ID)
+                        new NotificationCompat.Builder(mContext, DEFAULT_CHANNEL_ID)
                                 .setContentTitle(fileName)
-                                .setContentText(context.getText(R.string.notification_text_downloaded))
+                                .setContentText(mContext.getText(R.string.notification_text_downloaded))
                                 .setSmallIcon(R.drawable.ic_mic_foreground)
                                 .setContentIntent(pendingIntent)
                                 .setAutoCancel(true)
-                                .setColor(context.getResources().getColor(R.color.colorPrimary))
+                                .setColor(mContext.getResources().getColor(R.color.colorPrimary))
                                 .build();
-                NotificationManagerCompat notificationManager = NotificationManagerCompat.from(context);
+                NotificationManagerCompat notificationManager = NotificationManagerCompat.from(mContext);
                 notificationManager.notify(++NOTIFICATION_ID,notification);
                 Intent broadcast = new Intent(RecordingsFragment.BROADCAST_FILE_DOWNLOADED);
                 broadcast.putExtra(RecordingsFragment.KEY_HASH_VALUE,hashValue);
                 broadcast.putExtra(RecordingsFragment.KEY_FILE_NAME,fileName);
-                db.insert(fileName, file.length(), Integer.parseInt(duration), formattedDate, hashValue);
-                LocalBroadcastManager.getInstance(context).sendBroadcast(broadcast);
+                mDb.insert(fileName, file.length(), Integer.parseInt(duration), formattedDate, hashValue);
+                LocalBroadcastManager.getInstance(mContext).sendBroadcast(broadcast);
             } catch (NoSuchAlgorithmException e) {
                 e.printStackTrace();
             } catch (FileNotFoundException e) {
@@ -396,15 +396,15 @@ public class DriveServiceHelper {
         @Override
         public void run() {
             Notification notification =
-                    new NotificationCompat.Builder(context, IMPORTANCE_CHANNEL_ID)
-                            .setContentTitle(context.getResources().getString(R.string.app_name))
-                            .setContentText(context.getText(R.string.sync_in_progress))
+                    new NotificationCompat.Builder(mContext, IMPORTANCE_CHANNEL_ID)
+                            .setContentTitle(mContext.getResources().getString(R.string.app_name))
+                            .setContentText(mContext.getText(R.string.sync_in_progress))
                             .setSmallIcon(R.drawable.ic_mic_foreground)
                             .setPriority(NotificationCompat.PRIORITY_HIGH)
                             .setDefaults(Notification.DEFAULT_ALL)
-                            .setColor(context.getResources().getColor(R.color.colorPrimary))
+                            .setColor(mContext.getResources().getColor(R.color.colorPrimary))
                             .build();
-            NotificationManagerCompat notificationManager = NotificationManagerCompat.from(context);
+            NotificationManagerCompat notificationManager = NotificationManagerCompat.from(mContext);
             notificationManager.notify(NOTIFICATION_ID,notification);
             String folderId = "";
             FileList filesAppData;
@@ -455,17 +455,17 @@ public class DriveServiceHelper {
 
                 for (com.google.api.services.drive.model.File driveFile : driveList) {
                     boolean exist = false;
-                    for (int i = 0; i < localList.size(); i++) {
+                    for (int i = 0; i < mLocalList.size(); i++) {
                         final int pos = i;
-                        if (localList.get(i).getName().equals(driveFile.getName())) {
+                        if (mLocalList.get(i).getName().equals(driveFile.getName())) {
                             exist = true;
-                            if (localList.get(i).getLocation() == Recording.LOCATION_ON_PHONE) {
-                                localList.get(i).setLocation(Recording.LOCATION_PHONE_DRIVE);
-                                Handler handler = new Handler(context.getMainLooper());
+                            if (mLocalList.get(i).getLocation() == Recording.LOCATION_ON_PHONE) {
+                                mLocalList.get(i).setLocation(Recording.LOCATION_PHONE_DRIVE);
+                                Handler handler = new Handler(mContext.getMainLooper());
                                 handler.post(new Runnable() {
                                     @Override
                                     public void run() {
-                                        adapter.notifyItemChanged(pos);
+                                        mAdapter.notifyItemChanged(pos);
                                     }
                                 });
                                 break;
@@ -476,12 +476,12 @@ public class DriveServiceHelper {
                     if (!exist){
                         Recording r = new Recording(-1,driveFile.getName(),driveFile.getSize(),0,"",driveFile.getId());
                         r.setLocation(Recording.LOCATION_ON_DRIVE);
-                        localList.add(localList.size(),r);
-                        Handler handler = new Handler(context.getMainLooper());
+                        mLocalList.add(mLocalList.size(),r);
+                        Handler handler = new Handler(mContext.getMainLooper());
                         handler.postDelayed(new Runnable() {
                             @Override
                             public void run() {
-                                adapter.notifyItemInserted(localList.size());
+                                mAdapter.notifyItemInserted(mLocalList.size());
                             }
                         },0);
                     }
