@@ -106,6 +106,7 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
                     if (isInternetAvailable()) {
                         holder.itemView.setEnabled(false);
                         holder.buttonMore.setImageResource(R.drawable.ic_sync_grey);
+                        holder.buttonMore.setEnabled(false);
                         Intent broadcast = new Intent(RecordingsFragment.BROADCAST_DOWNLOAD_REQUEST);
                         broadcast.putExtra(RecordingsFragment.KEY_FILE_NAME, mRecordingsList.get(position).getName());
                         broadcast.putExtra(RecordingsFragment.KEY_FILE_ID, mRecordingsList.get(position).getHashValue());
@@ -145,6 +146,7 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
                     if (isInternetAvailable()) {
                         holder.buttonMore.setEnabled(false);
                         holder.buttonMore.setImageResource(R.drawable.ic_sync_grey);
+                        holder.itemView.setEnabled(false);
                         Intent broadcast = new Intent(RecordingsFragment.BROADCAST_DOWNLOAD_REQUEST);
                         broadcast.putExtra(RecordingsFragment.KEY_FILE_NAME, mRecordingsList.get(position).getName());
                         broadcast.putExtra(RecordingsFragment.KEY_FILE_ID, mRecordingsList.get(position).getHashValue());

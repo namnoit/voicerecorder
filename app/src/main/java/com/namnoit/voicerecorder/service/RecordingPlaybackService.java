@@ -242,7 +242,7 @@ public class RecordingPlaybackService extends Service {
         public void run() {
             mUpdateTimeBroadcast.putExtra(RecordingsFragment.KEY_CURRENT_POSITION, mMediaPlayer.getCurrentPosition());
             LocalBroadcastManager.getInstance(getApplicationContext()).sendBroadcast(mUpdateTimeBroadcast);
-            mHandler.postDelayed(this, 1000); // 1 seconds
+            mHandler.postDelayed(this, 995); // 1 seconds
         }
     };
 
