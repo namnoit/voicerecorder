@@ -70,5 +70,8 @@
     <string name="close_recording_button_desc">Close recording button</string>
     <string name="icon_description">Icon</string>
     <string name="toast_recording_paused">Recording paused</string>
+    <string name="delete_files_title">Delete selected files?</string>
+    <string name="delete_files_message">Are you sure to delete selected files?</string>
+    <string name="was_deleted">was deleted</string>
 </resources>
 

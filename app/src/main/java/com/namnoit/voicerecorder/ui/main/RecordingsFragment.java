@@ -2,18 +2,25 @@ package com.namnoit.voicerecorder.ui.main;
 
 
 import android.app.ActivityManager;
+import android.app.AlertDialog;
 import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.net.ConnectivityManager;
 import android.os.Bundle;
+import android.view.ActionMode;
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageButton;
 import android.widget.SeekBar;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
@@ -40,7 +47,9 @@ import com.namnoit.voicerecorder.service.RecordingPlaybackService;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Iterator;
 import java.util.Locale;
+import java.util.Objects;
 
 public class RecordingsFragment extends Fragment {
     private RecyclerView recyclerView;
@@ -67,6 +76,8 @@ public class RecordingsFragment extends Fragment {
     public static final String BROADCAST_BACKUP_REQUEST = "REQUEST_BACKUP";
     public static final String BROADCAST_DOWNLOAD_REQUEST = "REQUEST_DOWNLOAD";
     public static final String BROADCAST_PAUSED = "PAUSED";
+    public static final String BROADCAST_START_SELECTING = "START_SELECTING";
+    public static final String BROADCAST_CANCEL_SELECTING = "CANCEL_SELECTING";
     public static final String KEY_CURRENT_POSITION = "current_position";
     public static final String KEY_DURATION = "duration";
     public static final String KEY_HASH_VALUE = "hash_value";
@@ -87,7 +98,7 @@ public class RecordingsFragment extends Fragment {
                     if (r != null) {
                         list.add(0, r);
                         recordingsAdapter.notifyItemInserted(0);
-                        recordingsAdapter.updateSelectedPosition();
+                        recordingsAdapter.increasePosition();
                         recordingsAdapter.notifyItemRangeChanged(1, recordingsAdapter.getItemCount());
                         recyclerView.scrollToPosition(0);
                         mPref.put(KEY_IS_LATEST_LOADED,true);
@@ -180,7 +191,98 @@ public class RecordingsFragment extends Fragment {
                     status = STATUS_PAUSED;
                     playRecordingButton.setImageResource(R.drawable.ic_play);
                 }
+                else if (intent.getAction().equals(BROADCAST_START_SELECTING)) {
+                    mActionMode = Objects.requireNonNull(getActivity())
+                            .startActionMode(actionModeCallback);
+                }
+                else if (intent.getAction().equals(BROADCAST_CANCEL_SELECTING)) {
+                    if (mActionMode != null) {
+                        mActionMode.finish();
+                        mActionMode = null;
+                    }
+                }
             }
+        }
+    };
+
+    private ActionMode mActionMode;
+    private ActionMode.Callback actionModeCallback = new ActionMode.Callback() {
+
+        // Called when the action mode is created; startActionMode() was called
+        @Override
+        public boolean onCreateActionMode(ActionMode mode, Menu menu) {
+            // Inflate a menu resource providing context menu items
+            MenuInflater inflater = mode.getMenuInflater();
+            inflater.inflate(R.menu.context_menu, menu);
+            return true;
+        }
+
+        // Called each time the action mode is shown. Always called after onCreateActionMode, but
+        // may be called multiple times if the mode is invalidated.
+        @Override
+        public boolean onPrepareActionMode(ActionMode mode, Menu menu) {
+            return false; // Return false if nothing is done
+        }
+
+        // Called when the user selects a contextual menu item
+        @Override
+        public boolean onActionItemClicked(final ActionMode mode, MenuItem item) {
+            switch (item.getItemId()) {
+                case R.id.select_all_context_menu:
+                    for (Recording recording: list){
+                        recording.setSelected(true);
+                        recordingsAdapter.notifyDataSetChanged();
+                    }
+                    return true;
+                case R.id.delete_context_menu:
+                    AlertDialog.Builder builder = new AlertDialog.Builder(requireContext())
+                            .setTitle(getResources().getString(R.string.delete_files_title))
+                            .setMessage(getResources().getString(R.string.delete_files_message))
+                            .setPositiveButton(R.string.ok, new DialogInterface.OnClickListener() {
+                                @Override
+                                public void onClick(DialogInterface dialogInterface, int i) {
+                                    int pos = RecyclerView.NO_POSITION;
+                                    int count = 0;
+                                    for (Iterator<Recording> iterator = list.iterator(); iterator.hasNext();){
+                                        Recording recording = iterator.next();
+                                        pos++;
+                                        if (recording.isSelected()) {
+                                            db.delete(recording.getID());
+                                            iterator.remove();
+                                            recordingsAdapter.notifyItemRemoved(pos);
+                                            recordingsAdapter.notifyItemRangeChanged(pos,list.size());
+                                            recordingsAdapter.updatePositionAfterDeletion(pos);
+                                            pos--;
+                                            count++;
+                                        }
+                                    }
+                                    Toast.makeText(requireContext(),
+                                            count + " file" + (count > 1 ? "s ":" ") + getResources().getString(R.string.was_deleted),
+                                            Toast.LENGTH_SHORT).show();
+                                    mode.finish();
+                                }
+                            })
+                            .setNegativeButton(R.string.cancel, new DialogInterface.OnClickListener() {
+                                @Override
+                                public void onClick(DialogInterface dialogInterface, int i) {
+                                }
+                            });
+                    builder.create().show();
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
+        // Called when the user exits the action mode
+        @Override
+        public void onDestroyActionMode(ActionMode mode) {
+            for (Recording recording: list){
+                recording.setSelected(false);
+                recordingsAdapter.notifyDataSetChanged();
+            }
+            recordingsAdapter.setSelecting(false);
+            mActionMode = null;
         }
     };
 
@@ -213,13 +315,17 @@ public class RecordingsFragment extends Fragment {
                 new IntentFilter(RecordingsFragment.BROADCAST_BACKUP_REQUEST));
         LocalBroadcastManager.getInstance(requireContext()).registerReceiver(receiver,
                 new IntentFilter(RecordingsFragment.BROADCAST_DOWNLOAD_REQUEST));
+        LocalBroadcastManager.getInstance(requireContext()).registerReceiver(receiver,
+                new IntentFilter(RecordingsFragment.BROADCAST_START_SELECTING));
+        LocalBroadcastManager.getInstance(requireContext()).registerReceiver(receiver,
+                new IntentFilter(RecordingsFragment.BROADCAST_CANCEL_SELECTING));
         boolean isLatestLoaded = mPref.getBoolean(KEY_IS_LATEST_LOADED);
         if (!isLatestLoaded){
             Recording r = db.getLast();
             if (r != null) {
                 list.add(0, r);
                 recordingsAdapter.notifyItemInserted(0);
-                recordingsAdapter.updateSelectedPosition();
+                recordingsAdapter.increasePosition();
                 recordingsAdapter.notifyItemRangeChanged(1, recordingsAdapter.getItemCount());
                 recyclerView.scrollToPosition(0);
                 mPref.put(KEY_IS_LATEST_LOADED,true);

@@ -9,6 +9,7 @@ public class Recording {
     private String name, date, hashValue;
     private long size;
     private int location;
+    private boolean isSelected = false;
 
     public Recording(int ID, String name, long size, int duration, String date, String hashValue){
         this.ID = ID;
@@ -18,6 +19,7 @@ public class Recording {
         this.size = size;
         this.hashValue = hashValue;
         location = LOCATION_ON_PHONE;
+        isSelected = false;
     }
 
     public int getID() {
@@ -54,5 +56,13 @@ public class Recording {
 
     public int getLocation() {
         return location;
+    }
+
+    public boolean isSelected(){
+        return isSelected;
+    }
+
+    public void setSelected(boolean selected) {
+        isSelected = selected;
     }
 }
