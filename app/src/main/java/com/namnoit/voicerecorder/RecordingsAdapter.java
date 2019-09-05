@@ -4,7 +4,6 @@ import android.app.ActivityManager;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.graphics.Color;
 import android.net.ConnectivityManager;
 import android.net.Uri;
 import android.os.Build;
@@ -21,6 +20,8 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
+import androidx.cardview.widget.CardView;
+import androidx.core.content.ContextCompat;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -44,7 +45,7 @@ import java.util.Objects;
 
 public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.ViewHolder>{
     public static final String HASH_ALGORITHM = "SHA-256";
-    private int mSelectedPosition = RecyclerView.NO_POSITION;
+    private int mPlayingPosition = RecyclerView.NO_POSITION;
     private ArrayList<Recording> mRecordingsList;
     private Context mContext;
     private RecordingsDbHelper mDb;
@@ -57,7 +58,7 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
         mContext = c;
         mDb = new RecordingsDbHelper(mContext);
         if (isServiceRunning(RecordingPlaybackService.class)) {
-            mSelectedPosition = SharedPreferenceManager
+            mPlayingPosition = SharedPreferenceManager
                     .getInstance()
                     .getInt(SharedPreferenceManager.Key.CURRENT_POSITION_KEY,RecyclerView.NO_POSITION);
         }
@@ -80,9 +81,11 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
     public void onBindViewHolder(@NonNull final ViewHolder holder, final int position) {
         holder.textName.setText(mRecordingsList.get(position).getName());
         if (mRecordingsList.get(position).isSelected())
-            holder.itemView.setBackgroundColor(Color.parseColor("#b2ebf2"));
+            holder.itemCard.setCardBackgroundColor(ContextCompat.getColor(mContext,R.color.colorSelected));
+        else if (position == mPlayingPosition)
+            holder.itemCard.setCardBackgroundColor(ContextCompat.getColor(mContext,R.color.colorPlaying));
         else
-            holder.itemView.setBackgroundColor(Color.parseColor("#ffffff"));
+            holder.itemCard.setCardBackgroundColor(ContextCompat.getColor(mContext,R.color.colorWhite));
         if (mRecordingsList.get(position).getLocation()!=Recording.LOCATION_ON_DRIVE) {
             final int seconds = Math.round((float) mRecordingsList.get(position).getDuration() / 1000);
             long s = seconds % 60;
@@ -100,9 +103,10 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
             holder.line.setVisibility(View.INVISIBLE);
             holder.buttonMore.setImageResource(R.drawable.ic_download);
         }
-
-        if (position == mSelectedPosition) holder.icon.setImageResource(R.drawable.ic_play_red);
-        else holder.icon.setImageResource(R.drawable.ic_mic);
+        final String[] fileName = mRecordingsList.get(position).getName().split("\\.");
+        if (fileName[fileName.length-1].equals(RecorderService.AAC))
+            holder.icon.setImageResource(R.drawable.ic_microphone_star);
+        else holder.icon.setImageResource(R.drawable.ic_microphone);
         holder.itemView.setEnabled(true);
         holder.buttonMore.setEnabled(true);
         holder.itemView.setOnClickListener(new View.OnClickListener() {
@@ -125,9 +129,9 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
                 else {
                     File file = new File(appDir, mRecordingsList.get(position).getName());
                     if (!isFileChanged(file, mRecordingsList.get(position).getHashValue(), position)) {
-                        notifyItemChanged(mSelectedPosition);
-                        mSelectedPosition = position;
-                        notifyItemChanged(mSelectedPosition);
+                        notifyItemChanged(mPlayingPosition);
+                        mPlayingPosition = position;
+                        notifyItemChanged(mPlayingPosition);
                         SharedPreferenceManager.getInstance()
                                 .put(SharedPreferenceManager.Key.CURRENT_POSITION_ADAPTER_KEY, position);
                         if (isServiceRunning(RecorderService.class)) {
@@ -193,7 +197,7 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
                 View renameMenu = convertView.findViewById(R.id.menu_rename);
                 View detailsMenu = convertView.findViewById(R.id.menu_details);
                 View deleteMenu = convertView.findViewById(R.id.menu_delete);
-                final String[] fileName = mRecordingsList.get(position).getName().split("\\.");
+
                 dialogBuilder.setTitle(holder.textName.getText())
                         .setView(convertView)
                         .setPositiveButton(R.string.cancel, new DialogInterface.OnClickListener() {
@@ -338,10 +342,10 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
                                             notifyItemRangeChanged(position, getItemCount());
                                             // Delete file
                                             if (deleteFile.delete()) {
-                                                if (mSelectedPosition == position)
-                                                    mSelectedPosition = RecyclerView.NO_POSITION;
-                                                else if (mSelectedPosition > position)
-                                                    mSelectedPosition--;
+                                                if (mPlayingPosition == position)
+                                                    mPlayingPosition = RecyclerView.NO_POSITION;
+                                                else if (mPlayingPosition > position)
+                                                    mPlayingPosition--;
                                             } else
                                                 Toast.makeText(mContext,
                                                         mContext.getResources().getString(R.string.delete_failed),
@@ -391,21 +395,28 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
     }
 
     public void increasePosition(){
-        if (mSelectedPosition != RecyclerView.NO_POSITION)
-            mSelectedPosition++;
+        if (mPlayingPosition != RecyclerView.NO_POSITION)
+            mPlayingPosition++;
     }
 
     public void updatePositionAfterDeletion(int deletePosition){
-        if (mSelectedPosition == deletePosition)
-            mSelectedPosition = RecyclerView.NO_POSITION;
-        else if (mSelectedPosition > deletePosition)
-            mSelectedPosition--;
+        if (mPlayingPosition == deletePosition)
+            mPlayingPosition = RecyclerView.NO_POSITION;
+        else if (mPlayingPosition > deletePosition)
+            mPlayingPosition--;
+    }
+
+    public void resetPlayingPosition(){
+        if (!mRecordingsList.get(mPlayingPosition).isSelected())
+            notifyItemChanged(mPlayingPosition);
+        mPlayingPosition = RecyclerView.NO_POSITION;
     }
 
     class ViewHolder extends RecyclerView.ViewHolder{
         private TextView textName, textDuration;
         private ImageButton buttonMore;
         private ImageView icon, line;
+        private CardView itemCard;
         ViewHolder(@NonNull View itemView) {
             super(itemView);
             icon = itemView.findViewById(R.id.image_record);
@@ -413,6 +424,7 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
             textName = itemView.findViewById(R.id.item_recording_name);
             textDuration = itemView.findViewById(R.id.item_recording_duration);
             line = itemView.findViewById(R.id.line);
+            itemCard = itemView.findViewById(R.id.itemCard);
         }
 
     }
@@ -456,10 +468,10 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
                             mRecordingsList.remove(position);
                             notifyItemRemoved(position);
                             notifyItemRangeChanged(position, getItemCount());
-                            if (mSelectedPosition == position)
-                                mSelectedPosition = RecyclerView.NO_POSITION;
-                            else if (mSelectedPosition > position)
-                                mSelectedPosition--;
+                            if (mPlayingPosition == position)
+                                mPlayingPosition = RecyclerView.NO_POSITION;
+                            else if (mPlayingPosition > position)
+                                mPlayingPosition--;
                         }
                     }).create();
             dialog.show();

@@ -211,7 +211,7 @@ public class RecordingPlaybackService extends Service {
         NotificationCompat.Builder builder = new NotificationCompat
                 .Builder(this, RecorderService.SERVICE_CHANNEL_ID)
                 .setContentTitle(fileName)
-                .setSmallIcon(R.drawable.ic_play)
+                .setSmallIcon(R.drawable.ic_play_rounded)
                 .setContentIntent(pendingIntent)
                 .setOngoing(true);
         if (status == RecordingsFragment.STATUS_PLAYING) {

@@ -180,6 +180,7 @@ public class RecordingsFragment extends Fragment {
                     textCurrentPosition.setText(milliSeconds2String(curMillis));
                 }
                 else if (intent.getAction().equals(BROADCAST_FINISH_PLAYING)) {
+                    recordingsAdapter.resetPlayingPosition();
                     seekBar.setProgress(durationMillis);
                     status = STATUS_STOPPED;
                     textCurrentPosition.setText(getResources().getString(R.string.start_time));

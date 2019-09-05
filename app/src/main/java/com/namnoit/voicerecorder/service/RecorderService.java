@@ -248,10 +248,11 @@ public class RecorderService extends Service {
             // Configure Media Recorder
             mRecorder = new MediaRecorder();
             mRecorder.setAudioSource(MediaRecorder.AudioSource.DEFAULT);
+            mRecorder.setAudioChannels(2);
             int audioFormat = mPref.getInt(SharedPreferenceManager.Key.QUALITY_KEY,MainActivity.QUALITY_GOOD);
             switch (audioFormat) {
                 case MainActivity.QUALITY_GOOD:
-                    mRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
+                    mRecorder.setOutputFormat(MediaRecorder.OutputFormat.DEFAULT);
                     mRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
                     mRecorder.setAudioSamplingRate(48000);
                     mRecorder.setAudioEncodingBitRate(320000);
@@ -260,16 +261,9 @@ public class RecorderService extends Service {
                 case MainActivity.QUALITY_SMALL:
                     mRecorder.setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP);
                     mRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB);
-                    mRecorder.setAudioSamplingRate(48000);
-                    mRecorder.setAudioEncodingBitRate(128000);
+                    mRecorder.setAudioSamplingRate(44100);
+                    mRecorder.setAudioEncodingBitRate(64000);
                     fileName += "." + THREE_GPP;
-                    break;
-                default:
-                    mRecorder.setOutputFormat(MediaRecorder.OutputFormat.DEFAULT);
-                    mRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.DEFAULT);
-                    mRecorder.setAudioSamplingRate(16000);
-                    mRecorder.setAudioEncodingBitRate(128000);
-                    fileName += "." + AAC;
                     break;
             }
             mRecorder.setOutputFile(appDir + File.separator + fileName);
@@ -375,7 +369,7 @@ public class RecorderService extends Service {
                 new NotificationCompat.Builder(RecorderService.this, SERVICE_CHANNEL_ID)
                         .setContentTitle(getText(R.string.notification_title_recording))
                         .setContentText(getText(R.string.notification_text_recording))
-                        .setSmallIcon(R.drawable.ic_mic)
+                        .setSmallIcon(R.drawable.ic_microphone)
                         .setContentIntent(pendingIntent);
 
         // Pause/resume button
