@@ -16,6 +16,7 @@ import android.os.Handler;
 import android.view.LayoutInflater;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -242,27 +243,65 @@ public class MainActivity extends AppCompatActivity
         DrawerLayout drawer = findViewById(R.id.drawer_layout);
         if (id == R.id.nav_quality) {
             drawer.closeDrawer(GravityCompat.START,false);
-            final CharSequence[] items = {getResources().getString(R.string.quality_good),getResources().getString(R.string.quality_small)};
-            AlertDialog qualityDialog = new AlertDialog.Builder(MainActivity.this)
+            LayoutInflater inflater = LayoutInflater.from(getApplicationContext());
+            final View qualityDialogLayout = inflater.inflate(R.layout.dialog_quality, null);
+            final Button btnHighQuality = qualityDialogLayout.findViewById(R.id.button_quality_high);
+            final Button btnLowQuality = qualityDialogLayout.findViewById(R.id.button_quality_low);
+            if (mQualityChosen == QUALITY_GOOD){
+                btnHighQuality.setBackgroundTintList(
+                        ContextCompat.getColorStateList(getApplicationContext(),R.color.colorPrimary));
+                btnLowQuality.setBackgroundTintList(
+                        ContextCompat.getColorStateList(getApplicationContext(),R.color.colorPrimaryDark));
+            }
+            else {
+                btnHighQuality.setBackgroundTintList(
+                        ContextCompat.getColorStateList(getApplicationContext(),R.color.colorPrimaryDark));
+                btnLowQuality.setBackgroundTintList(
+                        ContextCompat.getColorStateList(getApplicationContext(),R.color.colorPrimary));
+            }
+            btnHighQuality.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View view) {
+                    btnHighQuality.setBackgroundTintList(
+                            ContextCompat.getColorStateList(getApplicationContext(),R.color.colorPrimary));
+                    btnLowQuality.setBackgroundTintList(
+                            ContextCompat.getColorStateList(getApplicationContext(),R.color.colorPrimaryDark));
+                    mQualityChosen = QUALITY_GOOD;
+                }
+            });
+            btnLowQuality.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View view) {
+                    btnHighQuality.setBackgroundTintList(
+                            ContextCompat.getColorStateList(getApplicationContext(),R.color.colorPrimaryDark));
+                    btnLowQuality.setBackgroundTintList(
+                            ContextCompat.getColorStateList(getApplicationContext(),R.color.colorPrimary));
+                    mQualityChosen = QUALITY_SMALL;
+                }
+            });
+            com.google.android.material.button.MaterialButton btnOk =
+                    qualityDialogLayout.findViewById(R.id.button_quality_ok);
+            com.google.android.material.button.MaterialButton btnCancel =
+                    qualityDialogLayout.findViewById(R.id.button_quality_cancel);
+            final AlertDialog qualityDialog = new AlertDialog.Builder(MainActivity.this)
+                    .setView(qualityDialogLayout)
                     .setTitle(getResources().getString(R.string.text_quality_title))
-                    .setSingleChoiceItems(items, mQualityChosen, new DialogInterface.OnClickListener() {
-                        public void onClick(DialogInterface dialog, int item) {
-                            mQualityChosen = item;
-                        }
-                    })
-                    .setPositiveButton(R.string.ok, new DialogInterface.OnClickListener() {
-                        @Override
-                        public void onClick(DialogInterface dialog, int which) {
-                            mPref.put(SharedPreferenceManager.Key.QUALITY_KEY, mQualityChosen);
-                        }
-                    })
-                    .setOnDismissListener(new DialogInterface.OnDismissListener() {
-                        @Override
-                        public void onDismiss(DialogInterface dialog) {
-                            mQualityChosen = mPref.getInt(SharedPreferenceManager.Key.QUALITY_KEY,QUALITY_GOOD);
-                        }
-                    })
+                    .setCancelable(false)
                     .create();
+            btnOk.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View view) {
+                    mPref.put(SharedPreferenceManager.Key.QUALITY_KEY, mQualityChosen);
+                    qualityDialog.cancel();
+                }
+            });
+            btnCancel.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View view) {
+                    mQualityChosen = mPref.getInt(SharedPreferenceManager.Key.QUALITY_KEY,QUALITY_GOOD);
+                    qualityDialog.cancel();
+                }
+            });
             qualityDialog.show();
         }
         else if (id == R.id.nav_account) {
@@ -357,7 +396,6 @@ public class MainActivity extends AppCompatActivity
         }
 
         item.setCheckable(false);
-
         drawer.closeDrawer(GravityCompat.START);
         return true;
     }

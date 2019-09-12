@@ -339,7 +339,7 @@ public class RecordingsAdapter extends RecyclerView.Adapter<RecordingsAdapter.Vi
                                             mDb.delete(mRecordingsList.get(position).getID());
                                             mRecordingsList.remove(position);
                                             notifyItemRemoved(position);
-                                            notifyItemRangeChanged(position, getItemCount());
+                                            notifyItemRangeChanged(position, mRecordingsList.size());
                                             // Delete file
                                             if (deleteFile.delete()) {
                                                 if (mPlayingPosition == position)
